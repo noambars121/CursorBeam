@@ -32,6 +32,15 @@ desktop.ini
 *.temp
 .cache/
 
+# Installers and executables
+*.exe
+*.msi
+*.dmg
+*.pkg
+
+# Windows Service daemon files
+daemon/
+
 # Logs
 logs/
 *.log
