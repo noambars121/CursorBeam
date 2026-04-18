@@ -476,21 +476,31 @@ if ($script:InstallTailscale) {
     if (Test-TailscaleInstalled) {
         Write-Log "Tailscale already installed ✓" "SUCCESS"
     } else {
-        Write-Log "Installing Tailscale (requires administrator privileges)..."
+        Write-Host ""
+        Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
+        Write-Host "  Installing Tailscale" -ForegroundColor White
+        Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "The Tailscale installer window will open." -ForegroundColor Yellow
+        Write-Host "Please follow the on-screen prompts." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Click 'Yes' when prompted for administrator access." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Press any key when ready to continue..." -ForegroundColor Gray
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        
         $tsResult = Install-Tailscale
+        
         if ($tsResult) {
             Write-Log "Tailscale installed successfully ✓" "SUCCESS"
             Write-Host ""
-            Write-Host "NOTE: To use Tailscale, you need to:" -ForegroundColor Yellow
-            Write-Host "1. Open Tailscale from the system tray (near the clock)" -ForegroundColor Yellow
-            Write-Host "2. Click 'Log in' and authenticate with your account" -ForegroundColor Yellow
-            Write-Host "3. Install Tailscale on your phone using the same account" -ForegroundColor Yellow
-            Write-Host ""
+            Show-MessageBox "Tailscale installed successfully!`n`nNext steps:`n`n1. Open Tailscale from system tray (near clock)`n2. Click 'Log in' and authenticate`n3. Install Tailscale on your phone (same account)`n`nThen you can access CursorBeam from anywhere!" "Tailscale Setup" -Icon Information
         } else {
-            Write-Log "Tailscale installation failed" "WARNING"
-            $manualInstall = Show-MessageBox "Tailscale installation failed.`n`nWould you like to open the download page to install manually?" "Tailscale Installation" -Buttons YesNo -Icon Question
+            Write-Log "Tailscale installation was cancelled or failed" "WARNING"
+            $manualInstall = Show-MessageBox "Tailscale installation was not completed.`n`nWould you like to open the download page to install manually later?" "Tailscale Installation" -Buttons YesNo -Icon Question
             if ($manualInstall -eq "Yes") {
                 Start-Process "https://tailscale.com/download/windows"
+                Show-MessageBox "The download page has been opened.`n`nYou can install Tailscale any time - CursorBeam will work without it on your local WiFi." "Info" -Icon Information
             }
         }
     }
