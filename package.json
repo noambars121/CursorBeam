@@ -7,6 +7,7 @@
   "scripts": {
     "setup": "powershell -ExecutionPolicy Bypass -File setup.ps1",
     "installer": "powershell -ExecutionPolicy Bypass -File install.ps1",
+    "build:installer": "powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1",
     "start": "npx tsx src/start.ts",
     "relay": "npx tsx src/relay-server.ts",
     "check": "tsc --noEmit",

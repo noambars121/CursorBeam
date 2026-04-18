@@ -1,0 +1,64 @@
+name: Build Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+        
+    - name: Build Installer
+      run: |
+        cd installer
+        .\build-installer.ps1
+      shell: powershell
+      
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: CursorBeam-Installer
+        path: dist/CursorBeam-Setup-*.exe
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/CursorBeam-Setup-*.exe
+        body: |
+          ## CursorBeam ${{ github.ref_name }}
+          
+          ### Installation
+          1. Download `CursorBeam-Setup-v*.exe`
+          2. Run the installer
+          3. Follow the setup wizard
+          4. Done! CursorBeam is ready to use
+          
+          ### What's Included
+          - ✅ Automatic dependency installation
+          - ✅ Windows Service setup
+          - ✅ Desktop shortcuts
+          - ✅ Cursor CDP configuration
+          - ✅ One-click uninstall
+          
+          ### System Requirements
+          - Windows 10/11 (64-bit)
+          - Cursor IDE installed
+          - 200MB free space
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
