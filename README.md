@@ -62,19 +62,20 @@ npm start
 ## 🎯 How It Works
 
 ```
-┌─────────────┐           ┌─────────────┐           ┌─────────────┐
-│   Phone     │◄─WebSocket─┤  Relay      │◄───CDP───┤   Cursor    │
-│   (PWA)     │   (9800)   │  Server     │  (9222)  │    IDE      │
-└─────────────┘           └─────────────┘           └─────────────┘
-     ↑                                                      ↑
-     │                      (optional)                      │
-     └─────────────────── Tailscale VPN ──────────────────┘
+┌─────────────┐        ┌──────────────┐        ┌─────────────┐
+│   Phone     │◄─WS───┤  Relay       │◄─CDP──┤   Cursor    │
+│   (PWA)     │ :9800  │  Server      │ :9222  │    IDE      │
+└─────────────┘        └──────────────┘        └─────────────┘
+     ↑                                                 ↑
+     │              (optional - remote access)         │
+     └───────────────── Tailscale VPN ────────────────┘
 ```
 
-1. **Cursor** runs with Chrome DevTools Protocol enabled
-2. **Relay Server** extracts chat state via CDP and syncs it
-3. **PWA** connects via WebSocket for real-time updates
-4. **Tailscale** (optional) provides secure remote access
+**Architecture:**
+1. **Cursor IDE** runs with Chrome DevTools Protocol (CDP) enabled on port 9222
+2. **Relay Server** connects via CDP, extracts chat/terminal state, and syncs it
+3. **PWA Client** connects via WebSocket for real-time bidirectional updates
+4. **Tailscale** (optional) provides encrypted mesh VPN for secure remote access
 
 ---
 

@@ -1,0 +1,4452 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<title>Cursor Remote</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+
+
+/* 
+ * Refined Native iOS PWA Design
+ */
+:root {
+  --bg: #131313;
+  --surface: #1c1b1b;
+  --surface-elevated: #2a2a2a;
+  --surface-highest: #353534;
+  --border: rgba(255,255,255,0.15);
+  --text: #e5e2e1;
+  --text-secondary: #bec7d4;
+  --text-tertiary: #88919d;
+  --accent: #98cbff;
+  --accent-pressed: #00a3ff;
+  --human: #2a2a2a;
+  --assistant: #1c1b1b;
+  --red: #ffb4ab;
+  --yellow: #ffd60a;
+  --green: #61de8a;
+  --safe-top: env(safe-area-inset-top, 47px);
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+  /* Stop overscroll on the entire document */
+  html, body {
+    overscroll-behavior: none;
+  }
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+button:active:not(:disabled) {
+  opacity: 0.6;
+}
+
+/* =========================================
+   LOGIN / OFFLINE SCREENS
+========================================= */
+#login-screen, #offline-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  padding: 24px;
+}
+.login-box, #offline-screen > div { width: 100%; max-width: 320px; text-align: center; }
+.login-box h1, #offline-screen h1 { font-size: 28px; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 8px; }
+.login-box p, #offline-screen p { color: var(--text-tertiary); font-size: 15px; margin-bottom: 32px; }
+.login-box input { width: 100%; background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 14px; color: var(--text); font-size: 17px; margin-bottom: 16px; outline: none; }
+.login-box input:focus { border-color: var(--accent); }
+.login-box button, #start-sys-btn { width: 100%; background: var(--accent); color: #fff; padding: 16px; border-radius: 14px; font-size: 17px; font-weight: 600; }
+.login-err { color: var(--red); margin-top: 16px; font-size: 14px; }
+
+/* =========================================
+   APP SHELL & HEADER
+========================================= */
+#app {
+  display: none;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+#header {
+  padding-top: max(var(--safe-top), 12px);
+  background: rgba(19, 19, 19, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--surface);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 10px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.header-right {
+  justify-content: flex-end;
+}
+.header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 2;
+  overflow: hidden;
+}
+#header-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
+}
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+#status-dot.connected { background: var(--green); }
+#status-dot.reconnecting, #status-dot.switching_project { background: var(--yellow); }
+#status-dot.disconnected { background: var(--red); }
+
+.nav-btn {
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 400;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-btn:disabled { opacity: 0.4; }
+#logout-btn, #msg-count { display: none; }
+
+/* =========================================
+   MODE SELECTOR
+========================================= */
+#mode-bar {
+  padding: 8px 16px 4px;
+  background: var(--bg);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+#mode-bar-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.mode-label { display: none; }
+.mode-segmented {
+  display: flex;
+  background: #1c1c1e;
+  border-radius: 8px;
+  padding: 2px;
+  width: 100%;
+  max-width: 400px;
+}
+.mode-btn {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  border-radius: 6px;
+  text-align: center;
+}
+.mode-btn.active {
+  background: #636366;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04);
+}
+#load-all-history-btn {
+  display: none;
+  padding: 5px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(152, 203, 255, 0.08);
+  border: 1px solid rgba(152, 203, 255, 0.18);
+  border-radius: 12px;
+  letter-spacing: 0.01em;
+  opacity: 0.88;
+  align-self: center;
+}
+#load-all-history-btn:active:not(:disabled) {
+  opacity: 1;
+  background: rgba(152, 203, 255, 0.14);
+}
+#load-all-history-btn:disabled {
+  opacity: 0.4;
+  color: var(--text-tertiary);
+}
+
+/* =========================================
+   MESSAGES AREA
+========================================= */
+#chat-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  overscroll-behavior: contain;
+  overflow-anchor: auto;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.msg {
+  max-width: 88%;
+  font-size: 16px;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+  word-wrap: break-word;
+}
+
+.msg.human {
+  align-self: flex-end;
+  background: var(--human);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-top-right-radius: 2px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.msg.human .msg-label { display: none; }
+
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-top-left-radius: 2px;
+  border: 1px solid var(--border);
+}
+.msg.assistant .msg-label { display: none; }
+
+.msg.tool {
+  align-self: flex-start;
+  background: transparent;
+  padding: 0 10px;
+  border-radius: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  border: none;
+  max-width: 96%;
+}
+.msg.tool .msg-label {
+  display: none;
+}
+
+/* Cursor IDE–style tool / edit cards */
+.tool-cursor-card {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(240, 246, 252, 0.12);
+  background: #161b22;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.tool-cursor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  background: #0d1117;
+  border-bottom: 1px solid rgba(240, 246, 252, 0.08);
+}
+.tool-lang-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.tool-badge-ts { background: #3178c6; color: #fff; }
+.tool-badge-js { background: #f7df1e; color: #000; }
+.tool-badge-html { background: #e34f26; color: #fff; }
+.tool-badge-css { background: #264de4; color: #fff; }
+.tool-badge-json { background: #cbcb41; color: #1a1a1a; }
+.tool-badge-md { background: #519aba; color: #fff; }
+.tool-badge-py { background: #3776ab; color: #fff; }
+.tool-badge-generic { background: #6e7681; color: #f0f6fc; }
+.tool-cursor-filename {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #c9d1d9;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-cursor-plus {
+  color: #3fb950;
+  font-size: 13px;
+  font-weight: 650;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tool-cursor-body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  background: #0d1117;
+  max-height: min(52vh, 320px);
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tool-code-line {
+  padding: 1px 11px 1px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #e6edf3;
+  border-left: 3px solid transparent;
+}
+.tool-code-line-add {
+  background: rgba(63, 185, 80, 0.16);
+  border-left-color: rgba(63, 185, 80, 0.55);
+}
+.tool-code-meta {
+  color: #8b949e;
+  font-style: italic;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.tool-cursor-pending {
+  padding: 6px 11px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #d4a72c;
+  background: rgba(212, 167, 44, 0.08);
+  border-top: 1px solid rgba(240, 246, 252, 0.06);
+}
+
+.msg.thought {
+  align-self: flex-start;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  padding: 0 14px;
+}
+
+.msg.loading {
+  align-self: flex-start;
+  color: var(--text-tertiary);
+  padding: 10px 14px;
+  font-size: 15px;
+}
+
+.msg.unknown { align-self: center; font-size: 12px; color: var(--text-tertiary); }
+.msg.optimistic { opacity: 0.6; }
+
+.msg code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  background: rgba(255,255,255,0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #ff7b72;
+}
+.msg pre.code-block {
+  margin: 12px -16px;
+  padding: 14px 16px;
+  background: #000;
+  overflow-x: auto;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.msg pre.code-block code { background: none; padding: 0; color: #c9d1d9;}
+.msg p { margin-bottom: 12px; }
+.msg p:last-child { margin-bottom: 0; }
+.msg ul, .msg ol { margin-left: 20px; margin-bottom: 12px; }
+
+.msg-body.markdown-rich table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+.msg-body.markdown-rich thead, .msg-body.markdown-rich tbody { display: table; width: 100%; min-width: 280px; }
+.msg-body.markdown-rich th, .msg-body.markdown-rich td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.msg-body.markdown-rich th {
+  background: var(--surface-elevated);
+  font-weight: 600;
+  color: var(--text);
+}
+.msg-body.markdown-rich tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.03);
+}
+.msg-body.markdown-rich blockquote {
+  margin: 12px 0;
+  padding: 8px 0 8px 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--text-secondary);
+}
+.msg-body.markdown-rich h1, .msg-body.markdown-rich h2, .msg-body.markdown-rich h3, .msg-body.markdown-rich h4 {
+  margin: 14px 0 8px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+}
+.msg-body.markdown-rich h1 { font-size: 1.2rem; }
+.msg-body.markdown-rich h2 { font-size: 1.08rem; }
+.msg-body.markdown-rich h3 { font-size: 1rem; }
+.msg-body.markdown-rich hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.msg-body.markdown-rich a { color: var(--accent); word-break: break-word; }
+.msg-body.markdown-rich img { max-width: 100%; height: auto; border-radius: 8px; }
+.msg-body.markdown-rich pre {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: #0d0d0d;
+  border-radius: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.msg-body.markdown-rich pre code {
+  background: none;
+  padding: 0;
+  color: #c9d1d9;
+  font-size: inherit;
+}
+
+.msg.thought { max-width: 96%; padding: 0; }
+.msg.thought .thought-label {
+  display: block !important;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+.thought-card {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  overflow: hidden;
+}
+.thought-card summary.thought-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+  list-style: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.thought-card summary.thought-summary-row::-webkit-details-marker { display: none; }
+.thought-card summary.thought-summary-row::marker { display: none; }
+.thought-card .thought-chevron {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease, background 0.15s ease, color 0.15s ease;
+}
+.thought-card[open] .thought-chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+  background: rgba(152, 203, 255, 0.12);
+}
+.thought-card .thought-summary-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+.thought-card[open] summary.thought-summary-row {
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.thought-card .thought-inner {
+  padding: 10px 14px 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-height: 55vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.thought-card .thought-inner-empty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-style: italic;
+  max-height: none;
+}
+
+.revert-btn { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; color: var(--red); background: rgba(255, 180, 171, 0.1); border: 1px solid rgba(255, 180, 171, 0.2); padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; transition: all 0.2s; cursor: pointer; }
+  .revert-btn:active { opacity: 0.6; background: rgba(255, 180, 171, 0.2); }
+.edit-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  background: rgba(100, 180, 255, 0.12);
+  border: 1px solid rgba(100, 180, 255, 0.25);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.edit-prompt-btn:active { opacity: 0.75; background: rgba(100, 180, 255, 0.2); }
+.approval-bar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.approval-bar button { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+.btn-approve { background: var(--green); color: #000; }
+.btn-reject { background: var(--surface-elevated); color: var(--text); }
+
+#actions-bar { padding: 12px 16px; background: transparent; display: none; }
+#actions-bar.visible { display: block; }
+.actions-header { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+.action-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: var(--bg); padding: 10px; border-radius: 12px; border: 1px solid var(--border); }
+.action-item:last-child { margin-bottom: 0; }
+.action-context { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.action-btns { display: flex; gap: 6px; }
+.action-btns button { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.action-btn-approve { background: var(--green); color: #000; }
+.action-btn-run { background: var(--accent); color: #fff; }
+.action-btn-reject, .action-btn-skip { background: var(--surface-elevated); color: var(--text); }
+
+/* =========================================
+   COMPOSER (Bottom Input Area)
+========================================= */
+#composer-area {
+  flex-shrink: 0;
+  background: transparent;
+  padding: 8px 12px;
+  z-index: 20;
+}
+
+.composer-inner {
+  display: flex;
+  align-items: flex-end;
+  background: rgba(53, 53, 52, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px;
+  gap: 4px;
+  transition: border-color 0.2s;
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+}
+.composer-inner:focus-within { border-color: var(--accent); }
+#composer-area.phone-edit-mode .composer-inner {
+  border-color: rgba(0, 163, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 163, 255, 0.25);
+}
+#phone-edit-hint {
+  display: none;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--accent);
+  padding: 6px 8px 0;
+  text-align: start;
+}
+#phone-edit-hint.visible { display: block; }
+#phone-edit-exit {
+  margin-inline-start: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dim);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#img-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--text-tertiary);
+  margin-bottom: 3px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+#prompt-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 16px; /* CRITICAL: prevents iOS zoom */
+  line-height: 1.4;
+  padding: 8px 4px;
+  max-height: 120px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+#prompt-input::placeholder { color: var(--text-tertiary); }
+
+#send-btn, #stop-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3px;
+  margin-right: 3px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  border: none;
+}
+#send-btn {
+  background: var(--accent);
+  color: #000;
+}
+#send-btn:disabled {
+  background: var(--surface-elevated);
+  color: var(--text-tertiary);
+}
+#stop-btn {
+  display: none;
+  background: var(--surface-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+#stop-btn:active {
+  background: var(--border);
+}
+
+/* =========================================
+   OVERLAYS (Bottom Sheets)
+========================================= */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+.overlay.visible { display: flex; }
+
+.panel, .revert-panel {
+  width: 100%;
+  background: var(--surface);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding-bottom: max(var(--safe-bottom), 20px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+}
+
+.panel-header, .revert-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.1);
+}
+.panel-header h3, .revert-panel-header h3 { font-size: 17px; font-weight: 600; }
+.panel-close { color: var(--accent); font-size: 17px; font-weight: 400; }
+
+#chat-panel-actions { display: flex; align-items: center; gap: 12px; }
+#new-chat-btn { color: var(--accent); font-size: 16px; font-weight: 400; }
+
+.panel-list { list-style: none; overflow-y: auto; padding: 0; margin: 0; }
+.panel-list li {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--bg);
+  font-size: 17px;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  transition: background 0.2s;
+}
+.panel-list li:active { background: var(--surface-elevated); }
+.panel-list li.active { color: var(--accent); background: var(--surface-elevated); }
+
+.proj-item-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.proj-item-tap {
+  flex: 1;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.proj-fav-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px -8px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.proj-fav-btn.is-favorite { color: #f5a623; }
+.proj-fav-btn:active { background: var(--surface-elevated); }
+
+.chat-sub, .proj-path { font-size: 13px; color: var(--text-tertiary); margin-top: 4px; }
+.chat-title { font-weight: 500; }
+.chat-time { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+/* REVERT PANELS overrides */
+.revert-panel-header { justify-content: center; }
+.revert-panel-body { padding: 16px; overflow-y: auto; font-size: 15px; }
+.revert-panel-body .warn { color: var(--red); margin: 12px 0; font-size: 14px; line-height: 1.4; }
+.revert-panel-body .preview { background: #000; padding: 12px; border-radius: 12px; font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+.revert-panel-footer { padding: 16px; display: flex; gap: 12px; }
+.revert-panel-footer button { flex: 1; padding: 14px; border-radius: 14px; font-size: 16px; font-weight: 600; }
+.revert-cancel { background: var(--surface-elevated); color: var(--text); }
+.revert-destroy { background: var(--red); color: #fff; }
+.revert-dialog-btns { display: flex; flex-direction: column; gap: 12px; }
+.revert-dialog-btns button { padding: 16px 14px; min-height: 52px; border-radius: 12px; font-size: 16px; font-weight: 600; background: var(--surface-elevated); color: var(--text); }
+.revert-dialog-btns button.destructive { background: var(--red); color: #fff; }
+.revert-dialog-btns button.primary { background: var(--accent); color: #fff; }
+
+/* SPINNERS AND TOAST */
+.project-switching-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 300; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 500; flex-direction: column; gap: 16px; }
+.switching-spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#toast {
+  position: fixed;
+  top: max(var(--safe-top), 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+#toast.show { opacity: 1; }
+
+/* TERMINAL */
+#terminal-view { display: none; flex: 1; flex-direction: column; overflow: hidden; background: #000; min-height: 0; }
+#terminal-output { flex: 1; overflow-y: auto; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; min-height: 0; }
+#terminal-status { padding: 8px 16px; font-size: 12px; color: var(--text-tertiary); background: var(--surface); border-top: 0.5px solid var(--border); flex-shrink: 0; }
+.term-tabs-bar {
+  flex-shrink: 0;
+  background: #121212;
+  border-top: 0.5px solid var(--border);
+  padding: 6px 12px 8px;
+}
+.term-tabs-bar.is-hidden { display: none; }
+.term-tabs-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.term-tabs-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.term-tab-chip {
+  flex-shrink: 0;
+  max-width: 160px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.term-tab-chip:active:not(:disabled) { opacity: 0.85; }
+.term-tab-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(152, 203, 255, 0.14);
+}
+.term-tab-chip:disabled { opacity: 0.4; }
+#term-presets-section {
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
+  border-top: 0.5px solid var(--border);
+}
+.term-presets-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+.term-presets-toggle:active { opacity: 0.75; }
+.term-presets-chevron {
+  font-size: 9px;
+  color: var(--accent);
+  transition: transform 0.22s ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+#term-presets-section.expanded .term-presets-chevron {
+  transform: rotate(180deg);
+}
+.term-presets-toggle-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  flex: 1;
+}
+.term-presets-toggle-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+#term-presets-body {
+  display: none;
+  max-height: 38vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px 12px;
+}
+#term-presets-section.expanded #term-presets-body {
+  display: block;
+}
+.term-presets-group { margin-bottom: 14px; }
+.term-presets-group:last-child { margin-bottom: 4px; }
+.term-presets-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  padding-inline-start: 2px;
+}
+.term-presets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (min-width: 400px) {
+  .term-presets-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.preset-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: start;
+  min-height: 52px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.preset-chip:active:not(:disabled) {
+  background: rgba(152, 203, 255, 0.12);
+  border-color: rgba(152, 203, 255, 0.35);
+  transform: scale(0.98);
+}
+.preset-chip:disabled { opacity: 0.45; }
+.preset-chip-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+}
+.preset-chip-hint {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  text-align: start;
+}
+.term-presets-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 2px 10px;
+}
+.term-presets-manage-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 8px;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.term-presets-manage-btn:active { opacity: 0.7; }
+.term-presets-manage-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--bg);
+}
+.term-presets-manage-row:last-child { border-bottom: none; }
+.term-presets-manage-row-main { flex: 1; min-width: 0; }
+.term-presets-manage-row-title { font-weight: 600; font-size: 15px; }
+.term-presets-manage-row-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.term-presets-manage-row-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.term-presets-manage-row-actions button {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.term-presets-manage-edit { background: var(--surface-elevated); color: var(--text); }
+.term-presets-manage-remove { background: rgba(255, 59, 48, 0.15); color: var(--red); }
+.term-presets-manage-restore { background: rgba(152, 203, 255, 0.12); color: var(--accent); }
+.term-presets-manage-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin: 16px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.term-presets-manage-section-title:first-child { margin-top: 0; }
+.term-presets-edit-field { margin-bottom: 14px; }
+.term-presets-edit-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+.term-presets-edit-field input,
+.term-presets-edit-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+}
+.term-presets-edit-field textarea {
+  min-height: 88px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  resize: vertical;
+}
+.term-presets-edit-check { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 15px; }
+.term-presets-edit-check input { width: 20px; height: 20px; }
+.term-presets-manage-footer-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.term-presets-manage-footer-btns button {
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  font-family: inherit;
+}
+.term-presets-manage-add { background: var(--accent); color: #fff; }
+.term-presets-manage-reset { background: var(--surface-elevated); color: var(--text-tertiary); }
+#term-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+#term-composer-row { display: flex; gap: 8px; align-items: flex-end; width: 100%; }
+#term-input {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  min-height: 40px;
+}
+#term-send { padding: 0 14px; min-height: 40px; background: var(--accent); color: #fff; border-radius: 10px; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+#term-composer-extras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+}
+#term-kill { grid-column: 1 / -1; }
+.term-extra-btn {
+  flex: 1;
+  padding: 5px 8px;
+  min-height: 30px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+.term-extra-btn:active:not(:disabled) { opacity: 0.85; }
+.term-extra-btn:disabled { opacity: 0.45; }
+#term-ctrl-c { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+#term-new {
+  border-color: rgba(152, 203, 255, 0.4);
+  background: rgba(152, 203, 255, 0.1);
+  color: var(--accent);
+}
+#term-kill {
+  border-color: rgba(255, 180, 171, 0.35);
+  background: rgba(255, 180, 171, 0.08);
+  color: var(--red);
+}
+
+
+
+.tab-btn { color: rgba(229, 226, 225, 0.4); }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { 
+  background: linear-gradient(to bottom, rgba(152, 203, 255, 0.1), rgba(0, 163, 255, 0.2));
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(0,163,255,0.1);
+  transform: scale(0.98);
+}
+#chat-view.hidden { display: none !important; }
+#terminal-view.visible { display: flex !important; }
+</style>
+</head>
+<body>
+
+<div id="offline-screen" style="display:none;align-items:center;justify-content:center;height:100%;padding:20px;text-align:center;flex-direction:column">
+  <div style="width:100%;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px">
+    <h1 style="font-size:18px;margin-bottom:8px">System Offline</h1>
+    <p style="color:var(--dim);font-size:13px;margin-bottom:20px">The Cursor Remote relay is not running.</p>
+    <button id="start-sys-btn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">Start System</button>
+  </div>
+</div>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Cursor Remote</h1>
+    <p>Enter password to connect</p>
+    <input type="password" id="pw-input" placeholder="Password" autocomplete="current-password">
+    <button id="login-btn">Connect</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="header">
+    <div class="header-left">
+      <button id="menu-btn" class="nav-btn" onclick="openMenuPicker()" style="font-size:24px; padding:0 4px; display:flex; align-items:center;" title="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="header-center">
+      <div id="header-title" style="font-size: 17px;">Connecting...</div>
+      <div class="status-indicator">
+        <div id="status-dot"></div>
+        <span id="status-text" style="font-size:11px; color:var(--accent); margin-top:2px; font-weight: 500;">Offline</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="new-chat-btn-header" class="nav-btn" onclick="doNewChat()" style="font-size:24px; padding:0 4px; display:flex; align-items:center;" title="New Chat">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+      </button>
+    </div>
+  </div>
+  
+  <div id="menu-overlay" class="overlay" onclick="closeMenuPicker(event)">
+    <div id="menu-panel" class="panel">
+      <div class="panel-header">
+        <h3>Menu</h3>
+        <button class="panel-close" onclick="closeMenuPicker()">&times;</button>
+      </div>
+      <ul class="panel-list">
+        <li onclick="closeMenuPicker(); openProjectPicker();">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Project</span>
+            <span id="menu-project-val" style="color:var(--text-tertiary); font-size:15px;">—</span>
+          </div>
+        </li>
+        <li onclick="closeMenuPicker(); openModelPicker();">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Model</span>
+            <span id="menu-model-val" style="color:var(--text-tertiary); font-size:15px;">—</span>
+          </div>
+        </li>
+        <li onclick="closeMenuPicker(); openChatPicker();">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Conversations</span>
+            <span style="color:var(--text-tertiary);">></span>
+          </div>
+        </li>
+        <li onclick="closeMenuPicker(); doRestartRelay();">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <span>Restart Relay</span>
+            <span style="color:var(--text-tertiary); font-size:16px;" aria-hidden="true">&#x21bb;</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div id="project-overlay" class="overlay" onclick="closeProjectPicker(event)">
+    <div id="project-panel" class="panel">
+      <div id="project-panel-header" class="panel-header">
+        <h3>Projects</h3>
+        <button id="project-panel-close" class="panel-close" onclick="closeProjectPicker()">&times;</button>
+      </div>
+      <ul id="project-list" class="panel-list"><li style="color:var(--dim);padding:16px">Loading...</li></ul>
+    </div>
+  </div>
+  <div id="chat-overlay" class="overlay" onclick="closeChatPicker(event)">
+    <div id="chat-panel" class="panel">
+      <div id="chat-panel-header" class="panel-header">
+        <h3>Conversations</h3>
+        <div id="chat-panel-actions">
+          <button id="new-chat-btn" onclick="doNewChat()">+ New</button>
+          <button id="chat-panel-close" class="panel-close" onclick="closeChatPicker()">&times;</button>
+        </div>
+      </div>
+      <ul id="chat-list" class="panel-list"><li style="color:var(--dim);padding:16px">Loading...</li></ul>
+    </div>
+  </div>
+  
+  <div id="model-overlay" class="overlay" onclick="closeModelPicker(event)">
+    <div id="model-panel" class="panel">
+      <div id="model-panel-header" class="panel-header">
+        <h3>Model</h3>
+        <button id="model-panel-close" class="panel-close" onclick="closeModelPicker()">&times;</button>
+      </div>
+      <ul id="model-list" class="panel-list"><li style="color:var(--dim);padding:16px">Loading...</li></ul>
+    </div>
+  </div>
+  <div id="chat-view">
+    <div id="mode-bar">
+      <div id="mode-bar-row">
+        <span class="mode-label">Mode</span>
+        <div class="mode-segmented">
+          <button class="mode-btn" data-mode="agent" onclick="doModeSwitch('agent')">Agent</button>
+          <button class="mode-btn" data-mode="ask" onclick="doModeSwitch('ask')">Ask</button>
+          <button class="mode-btn" data-mode="plan" onclick="doModeSwitch('plan')">Plan</button>
+          <button class="mode-btn" data-mode="debug" onclick="doModeSwitch('debug')">Debug</button>
+        </div>
+      </div>
+      <button id="load-all-history-btn" onclick="loadFullChatHistory()">Load Full History</button>
+    </div>
+    <div id="messages"></div>
+    <div id="actions-bar"></div>
+    <div id="composer-area">
+      <div id="phone-edit-hint" aria-live="polite">
+        Edit mode: Text sent to Cursor edit field.
+        <button type="button" id="phone-edit-exit">Cancel</button>
+      </div>
+      <div class="composer-inner" style="flex-direction: column; align-items: stretch;">
+        <div id="preview-area" style="display:none; padding: 8px 8px 0 8px; gap: 8px; overflow-x: auto; white-space: nowrap;"></div>
+        <div style="display: flex; align-items: flex-end; width: 100%;">
+          <button id="img-btn" onclick="triggerImagePick()" title="Attach image">+</button>
+          <input type="file" id="img-file-input" accept="image/*" onchange="handleImagePick(this)" style="display:none">
+          <textarea id="prompt-input" rows="1" placeholder="Message..."></textarea>
+          <button id="send-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+          </button>
+          <button id="stop-btn" onclick="doStop()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="bottom-nav" style="width:100%; display:flex; justify-content:space-around; align-items:center; padding-top:8px; padding-bottom:0px; background:rgba(20,20,20,0.85); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); z-index:50; border-top:0.5px solid rgba(255,255,255,0.1); touch-action:none; flex-shrink:0;">
+    <div id="tab-chat" class="tab-btn active" data-tab="chat" onclick="switchTab('chat')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; width:64px; height:44px; border-radius:10px; transition:all 0.2s;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:2px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      <span style="font-size:10px; font-weight:600;">Chat</span>
+    </div>
+    <div id="tab-term" class="tab-btn" data-tab="term" onclick="switchTab('term')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; width:64px; height:44px; border-radius:10px; transition:all 0.2s;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:2px;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+      <span style="font-size:10px; font-weight:600;">Terminal</span>
+    </div>
+  </nav>
+
+  <div id="terminal-view">
+    <div id="terminal-output">Waiting for terminal data...</div>
+    <div id="terminal-status"><span class="term-meta" id="term-info">—</span></div>
+    <div id="term-tabs-bar" class="term-tabs-bar is-hidden">
+      <div class="term-tabs-label">Open Terminals</div>
+      <div id="term-tabs-list" class="term-tabs-list"></div>
+    </div>
+    <div id="term-presets-section" class="term-presets-section">
+      <button type="button" id="term-presets-toggle" class="term-presets-toggle" aria-expanded="false" aria-controls="term-presets-body">
+        <span class="term-presets-chevron" aria-hidden="true">▼</span>
+        <span class="term-presets-toggle-text">Quick Commands</span>
+        <span class="term-presets-toggle-hint" id="term-presets-hint">Show</span>
+      </button>
+      <div id="term-presets-body" class="term-presets-body" hidden>
+        <div class="term-presets-toolbar">
+          <button type="button" id="term-presets-manage-open" class="term-presets-manage-btn">Edit & Add</button>
+        </div>
+        <div id="term-presets"></div>
+      </div>
+    </div>
+    <div id="term-composer">
+      <div id="term-composer-row">
+        <textarea id="term-input" rows="1" placeholder="Terminal input..."></textarea>
+        <button type="button" id="term-send">Run</button>
+      </div>
+      <div id="term-composer-extras">
+        <button type="button" id="term-ctrl-c" class="term-extra-btn" title="עצור תהליך (SIGINT)">Ctrl+C</button>
+        <button type="button" id="term-new" class="term-extra-btn" title="Opens new terminal in Cursor">New Terminal</button>
+        <button type="button" id="term-kill" class="term-extra-btn" title="Closes active terminal tab in Cursor">Close טרמינל</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="revert-overlay" class="overlay" onclick="closeRevertSheet(event)">
+  <div class="revert-panel" onclick="event.stopPropagation()">
+    <div class="revert-panel-header">
+      <h3>Revert to this checkpoint?</h3>
+    </div>
+    <div class="revert-panel-body">
+      <div>This uses Cursor's built-in <strong>Restore Checkpoint</strong> feature for the selected message.</div>
+      <div class="warn">Cursor may roll back real file changes and workspace state up to this point. This is destructive.</div>
+      <div class="preview" id="revert-preview"></div>
+    </div>
+    <div class="revert-panel-footer">
+      <button class="revert-cancel" onclick="closeRevertSheet()">Cancel</button>
+      <button class="revert-destroy" id="revert-start-btn" onclick="doRevertStart()">Start Revert</button>
+    </div>
+  </div>
+</div>
+
+<div id="revert-confirm-overlay" class="overlay" onclick="closeRevertConfirm(event)">
+  <div class="revert-panel" onclick="event.stopPropagation()">
+    <div class="revert-panel-header">
+      <h3>Cursor is asking to confirm</h3>
+    </div>
+    <div class="revert-panel-body">
+      <div class="dlg-title" id="revert-dlg-title"></div>
+      <div class="dlg-body" id="revert-dlg-body"></div>
+      <div class="warn">Tap the exact button you want. Cursor will destroy state if you pick the destructive option.</div>
+      <div class="revert-dialog-btns" id="revert-dlg-btns"></div>
+    </div>
+    <div class="revert-panel-footer">
+      <button class="revert-cancel" onclick="closeRevertConfirm()">Keep dialog open / dismiss here</button>
+    </div>
+  </div>
+</div>
+
+<div id="term-presets-manage-overlay" class="overlay" onclick="closeTermPresetsManage(event)">
+  <div class="revert-panel" onclick="event.stopPropagation()">
+    <div class="revert-panel-header" style="justify-content:space-between;">
+      <button type="button" class="panel-close" onclick="closeTermPresetsManage()">Close</button>
+      <h3 id="term-presets-manage-title">Quick Commands</h3>
+      <span style="width:48px" aria-hidden="true"></span>
+    </div>
+    <div id="term-presets-manage-list-pane" class="revert-panel-body term-presets-manage-body">
+      <div id="term-presets-manage-list"></div>
+      <div class="term-presets-manage-footer-btns">
+        <button type="button" class="term-presets-manage-add" id="term-presets-add-btn">Add Command</button>
+        <button type="button" class="term-presets-manage-reset" id="term-presets-reset-all-btn">Reset All Local Customizations</button>
+      </div>
+    </div>
+    <div id="term-presets-manage-edit-pane" class="revert-panel-body term-presets-manage-body" style="display:none">
+      <div class="term-presets-edit-field">
+        <label for="term-preset-edit-id">ID</label>
+        <input type="text" id="term-preset-edit-id" autocomplete="off" readonly style="opacity:0.85">
+      </div>
+      <div class="term-presets-edit-field">
+        <label for="term-preset-edit-label">Label</label>
+        <input type="text" id="term-preset-edit-label" autocomplete="off">
+      </div>
+      <div class="term-presets-edit-field">
+        <label for="term-preset-edit-group">Group</label>
+        <input type="text" id="term-preset-edit-group" autocomplete="off" placeholder="e.g. Git">
+      </div>
+      <div class="term-presets-edit-field">
+        <label for="term-preset-edit-hint">רמז (אופציונלי)</label>
+        <input type="text" id="term-preset-edit-hint" autocomplete="off">
+      </div>
+      <div class="term-presets-edit-field">
+        <label for="term-preset-edit-text">Command Text</label>
+        <textarea id="term-preset-edit-text" rows="3"></textarea>
+      </div>
+      <label class="term-presets-edit-check"><input type="checkbox" id="term-preset-edit-enter" checked> Send Enter after typing</label>
+      <label class="term-presets-edit-check"><input type="checkbox" id="term-preset-edit-toinput"> רק למלא בשדה (בלי שליחה)</label>
+      <div class="revert-panel-footer" style="padding:16px 0 0; border-top:0.5px solid rgba(255,255,255,0.1); margin-top:8px;">
+        <button type="button" class="revert-cancel" id="term-preset-edit-cancel">Cancel</button>
+        <button type="button" class="revert-destroy" style="background:var(--accent);color:#000;" id="term-preset-edit-save">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js" crossorigin="anonymous"></script>
+
+<script>
+if (typeof DOMPurify !== 'undefined' && DOMPurify.addHook) {
+  DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+    if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+
+var RELAY_PORT = 9800; // default, maybe overridden but PWA needs to guess
+var SUPERVISOR_PORT = 9799;
+var BASE = location.protocol + '//' + location.hostname + ':' + RELAY_PORT;
+var SUPERVISOR_BASE = location.protocol + '//' + location.hostname + ':' + SUPERVISOR_PORT;
+var TOKEN = localStorage.getItem('v2_token') || '';
+var ws = null;
+var autoScroll = true;
+var chatHistoryLoadTimer = null;
+var lastChatHistoryLoadAt = 0;
+var chatHistoryLoading = false;
+var chatHistoryCooldownUntil = 0;
+var msgsScrollRaf = 0;
+var loadingFullHistory = false;
+var prevMsgs = [];
+var optimisticText = null;
+var wsBackoff = 2000;
+var wsAttempts = 0;
+var isSending = false;
+var lastSendCorrelation = null; // { sentAt, messageCountAtSend, promptPrefix }
+var serverActivityState = 'idle';
+
+// Connection state machine — exactly one of:
+//   'connected' | 'reconnecting' | 'disconnected'
+// (Plus a fourth display-only state `switching_project` that is derived from
+// `projectSwitching` inside resolveConnectionState — not stored here.)
+//
+// Transition shape on WS drop, from `connected`:
+//   t=0           WS close → state stays 'connected' (silent grace)
+//   t=SHOW_MS     state → 'reconnecting'             (dot turns yellow)
+//   t=SHOW_MS+DC  state → 'disconnected'             (dot turns grey)
+// Any WS `open` event in between clears both timers and snaps back to
+// 'connected' — brief reconnects are completely invisible.
+var connectionState = 'reconnecting';
+var reconnectingShowTimer = null;
+var disconnectGraceTimer = null;
+var RECONNECTING_SHOW_MS = 1500;
+var DISCONNECT_GRACE_MS = 5000;
+
+var $ = function(id) { return document.getElementById(id); };
+var $login = $('login-screen');
+var $app = $('app');
+var $pwInput = $('pw-input');
+var $loginErr = $('login-err');
+var $dot = $('status-dot');
+var $title = $('header-title');
+var $count = $('msg-count');
+var $msgs = $('messages');
+var $actionsBar = $('actions-bar');
+var $input = $('prompt-input');
+var $send = $('send-btn');
+var $stop = $('stop-btn');
+var $toast = $('toast');
+var $modeBar = $('mode-bar');
+var currentMode = null;
+var modeSwitching = false;
+
+// ── Toast ──
+var toastTimer = null;
+function showToast(msg, ms) {
+  $toast.textContent = msg;
+  $toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { $toast.classList.remove('show'); }, ms || 3000);
+}
+
+
+// ── iOS PWA Scroll Lock ──
+document.addEventListener('touchmove', function(e) {
+  var target = e.target;
+  var isScrollable = false;
+  
+  while (target && target !== document.body) {
+    if (
+      target.id === 'messages' || 
+      target.id === 'terminal-output' || 
+      target.id === 'term-presets-section' ||
+      target.id === 'term-presets-body' ||
+      target.id === 'term-presets-toggle' ||
+      target.closest && target.closest('#term-presets-body') ||
+      target.closest && target.closest('#term-presets-section') ||
+      target.closest && target.closest('#term-presets-manage-overlay') ||
+      target.id === 'term-tabs-bar' ||
+      target.closest && target.closest('#term-tabs-bar') ||
+      target.classList && target.classList.contains('term-tabs-list') ||
+      target.classList && target.classList.contains('panel-list') ||
+      target.classList && target.classList.contains('revert-panel-body') ||
+      target.classList && target.classList.contains('term-presets-manage-body') ||
+      target.tagName === 'TEXTAREA'
+    ) {
+      isScrollable = true;
+      break;
+    }
+    target = target.parentNode;
+  }
+  
+  if (!isScrollable) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+
+// ── iOS Keyboard / Bottom Nav UX Fix ──
+document.addEventListener('DOMContentLoaded', function() {
+  var inputs = [document.getElementById('prompt-input'), document.getElementById('term-input'), document.getElementById('pw-input')];
+  var bottomNav = document.getElementById('bottom-nav');
+  var composerArea = document.getElementById('composer-area');
+  var termComposer = document.getElementById('term-composer');
+  
+  function onFocus() {
+    if (bottomNav) bottomNav.style.display = 'none';
+    if (composerArea) composerArea.style.paddingBottom = '16px';
+    if (termComposer) termComposer.style.paddingBottom = '16px';
+  }
+  
+  function onBlur() {
+        if (bottomNav) bottomNav.style.display = 'flex';
+        if (composerArea) composerArea.style.paddingBottom = '8px';
+        if (termComposer) termComposer.style.paddingBottom = '10px';
+    // iOS Safari scroll fix after blur
+    window.scrollTo(0, 0);
+  }
+  
+  var phoneEditExit = document.getElementById('phone-edit-exit');
+  if (phoneEditExit) {
+    phoneEditExit.addEventListener('click', function () {
+      exitPhoneCursorEditMode();
+    });
+  }
+  syncPhoneEditChrome();
+
+  inputs.forEach(function(input) {
+    if (input) {
+      input.addEventListener('focus', onFocus);
+      input.addEventListener('blur', onBlur);
+    }
+  });
+
+  var termPresetsSection = document.getElementById('term-presets-section');
+  var termPresetsToggle = document.getElementById('term-presets-toggle');
+  var termPresetsBody = document.getElementById('term-presets-body');
+  var termPresetsHint = document.getElementById('term-presets-hint');
+  if (termPresetsSection && termPresetsToggle && termPresetsBody) {
+    function applyTermPresetsExpanded(expanded) {
+      termPresetsSection.classList.toggle('expanded', expanded);
+      termPresetsToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      termPresetsBody.hidden = !expanded;
+      if (termPresetsHint) termPresetsHint.textContent = expanded ? 'Hide' : 'Show';
+      try { localStorage.setItem('v2_term_presets_open', expanded ? '1' : '0'); } catch (e) {}
+    }
+    var savedOpen = false;
+    try { savedOpen = localStorage.getItem('v2_term_presets_open') === '1'; } catch (e) {}
+    applyTermPresetsExpanded(savedOpen);
+    termPresetsToggle.addEventListener('click', function() {
+      applyTermPresetsExpanded(!termPresetsSection.classList.contains('expanded'));
+    });
+  }
+});
+
+// ── Textarea ──
+$input.addEventListener('input', function() {
+  $input.style.height = 'auto';
+  $input.style.height = Math.min($input.scrollHeight, 120) + 'px';
+});
+$input.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+});
+
+// ── Auto-scroll tracking + load older messages in Cursor when user scrolls near top ──
+function scheduleLoadOlderFromCursor() {
+  if (chatHistoryLoading || loadingFullHistory || !TOKEN) return;
+  var now = Date.now();
+  if (now < chatHistoryCooldownUntil || now - lastChatHistoryLoadAt < 900) return;
+  chatHistoryLoading = true;
+  lastChatHistoryLoadAt = now;
+  fetch(BASE + '/chat/load-older', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + TOKEN },
+  })
+    .then(function (r) {
+      return r.json();
+    })
+    .catch(function () {
+      return null;
+    })
+    .finally(function () {
+      chatHistoryCooldownUntil = Date.now() + 220;
+      setTimeout(function () {
+        chatHistoryLoading = false;
+      }, 120);
+    });
+}
+
+$msgs.addEventListener(
+  'scroll',
+  function () {
+    if (msgsScrollRaf) return;
+    msgsScrollRaf = requestAnimationFrame(function () {
+      msgsScrollRaf = 0;
+      var st = $msgs.scrollTop;
+      var gap = $msgs.scrollHeight - st - $msgs.clientHeight;
+      autoScroll = gap < 52;
+      var listScrollable = $msgs.scrollHeight > $msgs.clientHeight + 24;
+      if (
+        listScrollable &&
+        st < 64 &&
+        connectionState === 'connected' &&
+        TOKEN &&
+        !chatHistoryLoading &&
+        !loadingFullHistory &&
+        Date.now() >= chatHistoryCooldownUntil
+      ) {
+        if (chatHistoryLoadTimer) clearTimeout(chatHistoryLoadTimer);
+        chatHistoryLoadTimer = setTimeout(function () {
+          chatHistoryLoadTimer = null;
+          scheduleLoadOlderFromCursor();
+        }, 520);
+      }
+    });
+  },
+  { passive: true },
+);
+function scrollToBottom() {
+  if (autoScroll) {
+    requestAnimationFrame(function () {
+      $msgs.scrollTop = $msgs.scrollHeight;
+    });
+  }
+}
+
+// ── Load full chat history (loop until atTop or max iterations) ──
+function loadFullChatHistory() {
+  if (loadingFullHistory || !TOKEN || connectionState !== 'connected') return;
+  loadingFullHistory = true;
+  chatHistoryLoading = true;
+  var btn = document.getElementById('load-all-history-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+  }
+
+  var maxIterations = 180;
+  var iteration = 0;
+  var lastMsgCount = 0;
+
+  function doOneLoad() {
+    iteration++;
+    fetch(BASE + '/chat/load-older', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + TOKEN },
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (result) {
+        if (!result || !result.ok) {
+          finishLoading('Failed: ' + (result ? result.reason || 'unknown' : 'network'));
+          return;
+        }
+        if (result.atTop === true) {
+          finishLoading('Completed (' + iteration + ' steps)');
+          return;
+        }
+        var currentMsgCount = result.messageCount || 0;
+        if (currentMsgCount === lastMsgCount && iteration > 2) {
+          finishLoading('Completed (' + iteration + ' steps)');
+          return;
+        }
+        lastMsgCount = currentMsgCount;
+        if (iteration >= maxIterations) {
+          finishLoading('הגבלת steps (180)');
+          return;
+        }
+        setTimeout(doOneLoad, 180);
+      })
+      .catch(function (err) {
+        finishLoading('שגיאה: ' + (err.message || 'unknown'));
+      });
+  }
+
+  function finishLoading(reason) {
+    loadingFullHistory = false;
+    chatHistoryLoading = false;
+    chatHistoryCooldownUntil = Date.now() + 1200;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Load Full History';
+    }
+    console.log('[Load Full History] ' + reason);
+  }
+
+  doOneLoad();
+}
+
+// ── Status model ──
+//
+// The connection dot has exactly four states:
+//   connected | reconnecting | switching_project | disconnected
+//
+// Activity (responding / waiting_for_approval / sending / chat switching /
+// creating_chat) NEVER changes the dot — it only changes the label text while
+// the dot stays `connected`. This is what keeps the UI calm: transient
+// activity doesn't flash traffic-light colors, and brief WS reconnects are
+// swallowed by the grace timer before they can show `disconnected`.
+//
+// Precedence (highest wins):
+//   1. switching_project  — user initiated; suppresses reconnecting/disconnected
+//   2. disconnected       — WS has been down longer than the grace window
+//   3. reconnecting       — WS is down but still within grace
+//   4. connected          — everything else
+var CONNECTION_LABELS = {
+  connected: 'Connected',
+  reconnecting: 'Reconnecting...',
+  switching_project: 'Switching project...',
+  disconnected: 'Disconnected'
+};
+
+var ACTIVITY_LABELS = {
+  responding: 'Responding...',
+  waiting_for_approval: 'Waiting for approval',
+  switching_chat: 'Switching chat...',
+  creating_chat: 'Creating chat...',
+  sending: 'Sending...'
+};
+
+function resolveConnectionState() {
+  // switching_project trumps everything: the WS drops intentionally during a
+  // project switch, and we must not flash `reconnecting`/`disconnected` over it.
+  if (projectSwitching || serverActivityState === 'switching_project') return 'switching_project';
+  if (connectionState === 'disconnected') return 'disconnected';
+  if (connectionState === 'reconnecting') return 'reconnecting';
+  return 'connected';
+}
+
+function resolveActivityLabel() {
+  if (isSending) return ACTIVITY_LABELS.sending;
+  if (chatSwitching || serverActivityState === 'switching_chat') return ACTIVITY_LABELS.switching_chat;
+  if (serverActivityState === 'creating_chat') return ACTIVITY_LABELS.creating_chat;
+  if (serverActivityState === 'waiting_for_approval') return ACTIVITY_LABELS.waiting_for_approval;
+  if (serverActivityState === 'responding') return ACTIVITY_LABELS.responding;
+  return CONNECTION_LABELS.connected;
+}
+
+// Remember the last window title so we keep showing it while the dot is yellow
+// (reconnecting/switching_project) — the header stays informative instead of
+// going blank.
+var lastWindowTitle = '';
+
+function updateLoadHistoryBtn() {
+  var btn = document.getElementById('load-all-history-btn');
+  if (!btn) return;
+  var show = connectionState === 'connected' && prevMsgs.length > 3 && !loadingFullHistory;
+  btn.style.display = show ? 'block' : 'none';
+}
+
+function updateStatus(serverState, windowTitle) {
+  if (serverState) serverActivityState = serverState;
+  if (typeof windowTitle === 'string' && windowTitle.length > 0) lastWindowTitle = windowTitle;
+  updateLoadHistoryBtn();
+
+  var conn = resolveConnectionState();
+
+  // Dot always reflects ONLY the connection state.
+  $dot.className = conn;
+
+  // Label text: when connected, show activity or window title. When not
+  // connected, show the connection label but keep the remembered title as a
+  // suffix so the user can still see which project they were on.
+  var titleText = windowTitle || lastWindowTitle || 'Cursor';
+  $title.textContent = titleText.length > 25 ? titleText.substring(0,25)+'...' : titleText;
+  
+  var statusText = conn === 'connected' ? resolveActivityLabel() : CONNECTION_LABELS[conn];
+  if(conn === 'connected' && !isSending && serverActivityState !== 'responding' && serverActivityState !== 'waiting_for_approval' && serverActivityState !== 'creating_chat' && serverActivityState !== 'switching_chat') {
+     statusText = 'Online';
+  }
+  var $statusText = document.getElementById('status-text');
+  if($statusText) $statusText.textContent = statusText;
+
+  if (typeof updateSendStop === 'function') updateSendStop();
+}
+
+
+// ── Menu ──
+var $menuOverlay = $('menu-overlay');
+function openMenuPicker() {
+  $menuOverlay.classList.add('visible');
+  $('menu-project-val').textContent = $projectBtn ? $projectBtn.textContent : '—';
+  $('menu-model-val').textContent = currentModel || '—';
+}
+function closeMenuPicker(e) {
+  if (e && e.target !== $menuOverlay && !e.target.classList.contains('panel-close')) return;
+  $menuOverlay.classList.remove('visible');
+}
+
+// ── Mode selector ──
+function renderMode(mode) {
+  currentMode = mode;
+  var btns = $modeBar.querySelectorAll('.mode-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var m = btns[i].getAttribute('data-mode');
+    if (m === mode) {
+      btns[i].classList.add('active');
+    } else {
+      btns[i].classList.remove('active');
+    }
+  }
+}
+
+function doModeSwitch(mode) {
+  if (modeSwitching || mode === currentMode) return;
+  modeSwitching = true;
+  var btns = $modeBar.querySelectorAll('.mode-btn');
+  for (var i = 0; i < btns.length; i++) btns[i].disabled = true;
+
+  fetch(BASE + '/mode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ mode: mode }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (j.ok && j.newMode) {
+      renderMode(j.newMode);
+    } else if (!j.ok) {
+      showToast('Mode switch failed: ' + (j.error || ''), 3000);
+    }
+  }).catch(function(e) {
+    showToast('Mode error: ' + e.message, 3000);
+  }).finally(function() {
+    modeSwitching = false;
+    var btns = $modeBar.querySelectorAll('.mode-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].disabled = false;
+  });
+}
+
+// ── Model selector ──
+var $modelBtn = document.createElement('button');
+var $modelOverlay = $('model-overlay');
+var $modelList = $('model-list');
+var currentModel = null;
+var modelSwitching = false;
+var modelsCache = [];
+
+function renderModelBtn() {
+  $modelBtn.textContent = currentModel || '—';
+}
+
+function openModelPicker() {
+  if (modelSwitching) return;
+  $modelOverlay.classList.add('visible');
+  $modelList.innerHTML = '<li style="color:var(--dim);padding:16px">Loading models...</li>';
+  fetchModels();
+}
+
+function closeModelPicker(e) {
+  if (e && e.target !== $modelOverlay && e.target !== $('model-panel-close')) return;
+  $modelOverlay.classList.remove('visible');
+}
+
+function fetchModels() {
+  fetch(BASE + '/models', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+  .then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(data) {
+    if (!data) return;
+    modelsCache = data.models || [];
+    if (data.currentModel) { currentModel = data.currentModel; renderModelBtn(); }
+    renderModelList();
+  }).catch(function() {
+    $modelList.innerHTML = '<li style="color:var(--red);padding:16px">Failed to load models</li>';
+  });
+}
+
+function renderModelList() {
+  if (modelsCache.length === 0) {
+    $modelList.innerHTML = '<li style="color:var(--dim);padding:16px">No models available</li>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < modelsCache.length; i++) {
+    var m = modelsCache[i];
+    var cls = (currentModel && m.toLowerCase() === currentModel.toLowerCase()) ? ' class="active"' : '';
+    html += '<li' + cls + ' onclick="selectModel(\'' + escHtml(m) + '\')">' + escHtml(m) + '</li>';
+  }
+  $modelList.innerHTML = html;
+}
+
+function selectModel(model) {
+  if (modelSwitching || (currentModel && model.toLowerCase() === currentModel.toLowerCase())) {
+    closeModelPicker();
+    return;
+  }
+  modelSwitching = true;
+  $modelBtn.disabled = true;
+  $modelOverlay.classList.remove('visible');
+
+  fetch(BASE + '/model', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ model: model }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (j.ok && j.newModel) {
+      currentModel = j.newModel;
+      renderModelBtn();
+      showToast('Model: ' + j.newModel, 2000);
+    } else if (!j.ok) {
+      showToast('Model switch failed: ' + (j.error || ''), 4000);
+    }
+  }).catch(function(e) {
+    showToast('Model error: ' + e.message, 3000);
+  }).finally(function() {
+    modelSwitching = false;
+    $modelBtn.disabled = false;
+  });
+}
+
+// ── Image upload ──
+var $imgBtn = $('img-btn');
+var $imgInput = $('img-file-input');
+var imageUploading = false;
+
+function triggerImagePick() {
+  if (imageUploading) return;
+  $imgInput.value = '';
+  $imgInput.click();
+}
+
+function handleImagePick(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    showToast('Not an image file', 3000);
+    return;
+  }
+
+  var maxSize = 10 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showToast('Image too large (max 10 MB)', 3000);
+    return;
+  }
+
+  imageUploading = true;
+  $imgBtn.disabled = true;
+  $imgBtn.classList.add('uploading');
+
+  var reader = new FileReader();
+  reader.onload = function() {
+    var dataUrl = reader.result;
+    uploadImage(dataUrl, file.name);
+  };
+  reader.onerror = function() {
+    imageUploading = false;
+    $imgBtn.disabled = false;
+    $imgBtn.classList.remove('uploading');
+    showToast('Failed to read image', 3000);
+  };
+  reader.readAsDataURL(file);
+}
+
+var pendingImages = [];
+function uploadImage(dataUrl, filename) {
+  pendingImages.push(dataUrl);
+  renderPreviewArea();
+  imageUploading = false;
+  $imgBtn.disabled = false;
+  $imgBtn.classList.remove('uploading');
+}
+
+function removePendingImage(index) {
+  pendingImages.splice(index, 1);
+  renderPreviewArea();
+}
+
+function renderPreviewArea() {
+  var previewArea = $('preview-area');
+  previewArea.innerHTML = '';
+  if (pendingImages.length === 0) {
+    previewArea.style.display = 'none';
+    return;
+  }
+  
+  previewArea.style.display = 'flex';
+  for (var i = 0; i < pendingImages.length; i++) {
+    var wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'inline-block';
+    
+    var img = document.createElement('img');
+    img.src = pendingImages[i];
+    img.style.height = '60px';
+    img.style.borderRadius = '8px';
+    img.style.border = '1px solid var(--border)';
+    img.style.objectFit = 'cover';
+    
+    var rmBtn = document.createElement('button');
+    rmBtn.innerHTML = '&times;';
+    rmBtn.style.position = 'absolute';
+    rmBtn.style.top = '-6px';
+    rmBtn.style.right = '-6px';
+    rmBtn.style.background = 'var(--red)';
+    rmBtn.style.color = '#fff';
+    rmBtn.style.border = 'none';
+    rmBtn.style.borderRadius = '12px';
+    rmBtn.style.width = '20px';
+    rmBtn.style.height = '20px';
+    rmBtn.style.fontSize = '14px';
+    rmBtn.style.lineHeight = '14px';
+    rmBtn.style.cursor = 'pointer';
+    rmBtn.style.display = 'flex';
+    rmBtn.style.alignItems = 'center';
+    rmBtn.style.justifyContent = 'center';
+    
+    (function(idx) {
+      rmBtn.onclick = function() { removePendingImage(idx); };
+    })(i);
+    
+    wrapper.appendChild(img);
+    wrapper.appendChild(rmBtn);
+    previewArea.appendChild(wrapper);
+  }
+}
+
+// ── Project selector ──
+var $projectBtn = document.createElement('button'); // Dummy since it moved to menu
+var $projectOverlay = $('project-overlay');
+var $projectList = $('project-list');
+var projectsCache = [];
+var activeProjectId = null;
+var projectSwitching = false;
+var switchOverlayEl = null;
+
+var FAVORITE_PROJECTS_STORAGE_KEY = 'v2_favorite_project_ids';
+
+function loadFavoriteProjectOrder() {
+  try {
+    var raw = localStorage.getItem(FAVORITE_PROJECTS_STORAGE_KEY);
+    if (!raw) return [];
+    var arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(function (x) { return typeof x === 'string' && x.length; });
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveFavoriteProjectOrder(ids) {
+  try {
+    localStorage.setItem(FAVORITE_PROJECTS_STORAGE_KEY, JSON.stringify(ids));
+  } catch (e) {}
+}
+
+function orderedProjectsForPicker(projects, favOrder) {
+  var byId = {};
+  for (var i = 0; i < projects.length; i++) byId[projects[i].id] = projects[i];
+  var out = [];
+  var seen = {};
+  for (var f = 0; f < favOrder.length; f++) {
+    var id = favOrder[f];
+    if (byId[id] && !seen[id]) {
+      out.push(byId[id]);
+      seen[id] = true;
+    }
+  }
+  for (var j = 0; j < projects.length; j++) {
+    if (!seen[projects[j].id]) out.push(projects[j]);
+  }
+  return out;
+}
+
+function toggleProjectFavorite(projectId) {
+  var order = loadFavoriteProjectOrder().slice();
+  var idx = order.indexOf(projectId);
+  if (idx >= 0) {
+    order.splice(idx, 1);
+  } else {
+    order.unshift(projectId);
+  }
+  saveFavoriteProjectOrder(order);
+  renderProjectList();
+}
+
+$projectList.addEventListener('click', function (ev) {
+  var favBtn = ev.target.closest('.proj-fav-btn');
+  if (favBtn) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    var fid = favBtn.getAttribute('data-project-id');
+    if (fid) toggleProjectFavorite(fid);
+    return;
+  }
+  var tap = ev.target.closest('.proj-item-tap');
+  if (tap) {
+    var pid = tap.getAttribute('data-project-id');
+    if (pid) selectProject(pid);
+  }
+});
+
+function openProjectPicker() {
+  if (projectSwitching) return;
+  $projectOverlay.classList.add('visible');
+  fetchProjects();
+}
+
+function closeProjectPicker(e) {
+  if (e && e.target !== $projectOverlay && e.target !== $('project-panel-close')) return;
+  $projectOverlay.classList.remove('visible');
+}
+
+function fetchProjects() {
+  fetch(BASE + '/projects', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+  .then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(data) {
+    if (!data) return;
+    projectsCache = data.projects || [];
+    activeProjectId = data.activeId;
+    renderProjectList();
+    renderProjectBtn();
+  }).catch(function() {});
+}
+
+function renderProjectList() {
+  if (projectsCache.length === 0) {
+    $projectList.innerHTML = '<li style="color:var(--dim);padding:16px">No projects found.<br><span style="font-size:11px">Set PROJECTS_ROOT in .env</span></li>';
+    return;
+  }
+  var favOrder = loadFavoriteProjectOrder();
+  var ordered = orderedProjectsForPicker(projectsCache, favOrder);
+  var favSet = {};
+  for (var f = 0; f < favOrder.length; f++) favSet[favOrder[f]] = true;
+
+  var html = '';
+  for (var i = 0; i < ordered.length; i++) {
+    var p = ordered[i];
+    var liCls = p.id === activeProjectId ? ' class="active"' : '';
+    var isFav = !!favSet[p.id];
+    var star = isFav ? '\u2605' : '\u2606';
+    var btnCls = isFav ? 'proj-fav-btn is-favorite' : 'proj-fav-btn';
+    var ariaFav = isFav ? 'הסר ממועדפים' : 'הוסף למועדפים (יוצג בראש הרשימה)';
+    html += '<li' + liCls + '>';
+    html += '<div class="proj-item-inner">';
+    html +=
+      '<div class="proj-item-tap" role="button" tabindex="0" data-project-id="' +
+      escAttr(p.id) +
+      '">';
+    html += '<div>' + escHtml(p.name) + '</div><span class="proj-path">' + escHtml(p.path) + '</span></div>';
+    html +=
+      '<button type="button" class="' +
+      btnCls +
+      '" data-project-id="' +
+      escAttr(p.id) +
+      '" aria-label="' +
+      escAttr(ariaFav) +
+      '">' +
+      star +
+      '</button>';
+    html += '</div></li>';
+  }
+  $projectList.innerHTML = html;
+}
+
+function renderProjectBtn() {
+  if (!projectsCache.length) { $projectBtn.textContent = '—'; return; }
+  var active = null;
+  for (var i = 0; i < projectsCache.length; i++) {
+    if (projectsCache[i].id === activeProjectId) { active = projectsCache[i]; break; }
+  }
+  $projectBtn.textContent = active ? active.name : '—';
+}
+
+function selectProject(id) {
+  if (id === activeProjectId || projectSwitching) return;
+  projectSwitching = true;
+  // Immediately flip the dot to switching_project so the user doesn't see the
+  // yellow "reconnecting" that would otherwise appear when CDP drops.
+  updateStatus(null);
+  $projectOverlay.classList.remove('visible');
+  $projectBtn.disabled = true;
+
+  switchOverlayEl = document.createElement('div');
+  switchOverlayEl.className = 'project-switching-overlay';
+  switchOverlayEl.innerHTML = '<div><span class="switching-spinner"></span>Switching project...</div>';
+  document.body.appendChild(switchOverlayEl);
+
+  disableAllControls(true);
+
+  fetch(BASE + '/project/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ projectId: id }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (j.ok) {
+      activeProjectId = j.projectId || id;
+      renderProjectBtn();
+      showToast('Switched to ' + (j.projectName || id), 3000);
+      prevMsgs = [];
+      $msgs.innerHTML = '';
+      loadState();
+    } else {
+      showToast('Switch failed: ' + (j.error || 'unknown'), 4000);
+    }
+  }).catch(function(e) {
+    showToast('Switch error: ' + e.message, 4000);
+  }).finally(function() {
+    projectSwitching = false;
+    $projectBtn.disabled = false;
+    if (switchOverlayEl) { switchOverlayEl.remove(); switchOverlayEl = null; }
+    disableAllControls(false);
+    // Refresh the dot now that projectSwitching is off — it resolves to
+    // connected/reconnecting based on the current WS state.
+    updateStatus(null);
+  });
+}
+
+function disableAllControls(disabled) {
+  $send.disabled = disabled;
+  $input.disabled = disabled;
+  $modelBtn.disabled = disabled;
+  $imgBtn.disabled = disabled;
+  $chatBtn.disabled = disabled;
+  var modeBtns = $modeBar.querySelectorAll('.mode-btn');
+  for (var i = 0; i < modeBtns.length; i++) modeBtns[i].disabled = disabled;
+  var actionBtns = $actionsBar.querySelectorAll('button');
+  for (var j = 0; j < actionBtns.length; j++) actionBtns[j].disabled = disabled;
+}
+
+// ── Chat switcher ──
+var $chatBtn = document.createElement('button');
+var $chatOverlay = $('chat-overlay');
+var $chatList = $('chat-list');
+var $newChatBtn = $('new-chat-btn');
+var chatsCache = [];
+var chatSwitching = false;
+
+function openChatPicker() {
+  if (chatSwitching) return;
+  $chatOverlay.classList.add('visible');
+  fetchChats();
+}
+
+function closeChatPicker(e) {
+  if (e && e.target !== $chatOverlay && e.target !== $('chat-panel-close')) return;
+  $chatOverlay.classList.remove('visible');
+}
+
+function fetchChats() {
+  fetch(BASE + '/chats', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+  .then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(data) {
+    if (!data) return;
+    chatsCache = data.chats || [];
+    renderChatList();
+    renderChatBtn(data.activeChatTitle);
+  }).catch(function() {});
+}
+
+function renderChatList() {
+  if (chatsCache.length === 0) {
+    $chatList.innerHTML = '<li style="color:var(--dim);padding:16px">No conversations found</li>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < chatsCache.length; i++) {
+    var c = chatsCache[i];
+    var cls = c.active ? ' class="active"' : '';
+    html += '<li' + cls + ' onclick="selectChat(' + c.index + ')">';
+    html += '<div class="chat-meta">';
+    html += '<span class="chat-title">' + escHtml(c.title) + '</span>';
+    if (c.subtitle) html += '<span class="chat-sub">' + escHtml(c.subtitle) + '</span>';
+    html += '</div>';
+    if (c.timeLabel) html += '<span class="chat-time">' + escHtml(c.timeLabel) + '</span>';
+    html += '</li>';
+  }
+  $chatList.innerHTML = html;
+}
+
+function renderChatBtn(activeTitle) {
+  var label = 'Chats';
+  if (activeTitle) {
+    label = activeTitle.length > 16 ? activeTitle.substring(0, 14) + '…' : activeTitle;
+  }
+  $chatBtn.textContent = label;
+}
+
+function selectChat(index) {
+  if (chatSwitching) return;
+  var target = null;
+  for (var i = 0; i < chatsCache.length; i++) {
+    if (chatsCache[i].index === index) { target = chatsCache[i]; break; }
+  }
+  if (target && target.active) { closeChatPicker(); return; }
+
+  chatSwitching = true;
+  $chatOverlay.classList.remove('visible');
+  $chatBtn.disabled = true;
+  $newChatBtn.disabled = true;
+  disableAllControls(true);
+
+  fetch(BASE + '/chat/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ chatIndex: index }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (j.ok) {
+      showToast('Switched chat', 2000);
+      prevMsgs = [];
+      $msgs.innerHTML = '';
+      loadState();
+      fetchChats();
+    } else {
+      showToast('Switch failed: ' + (j.error || 'unknown'), 4000);
+    }
+  }).catch(function(e) {
+    showToast('Switch error: ' + e.message, 4000);
+  }).finally(function() {
+    chatSwitching = false;
+    $chatBtn.disabled = false;
+    $newChatBtn.disabled = false;
+    disableAllControls(false);
+  });
+}
+
+function doNewChat() {
+  if (chatSwitching) return;
+  chatSwitching = true;
+  $newChatBtn.disabled = true;
+  $chatOverlay.classList.remove('visible');
+  disableAllControls(true);
+
+  fetch(BASE + '/chat/new', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (j.ok) {
+      showToast('New chat created', 2000);
+      prevMsgs = [];
+      $msgs.innerHTML = '';
+      loadState();
+      fetchChats();
+    } else {
+      showToast('New chat failed: ' + (j.error || 'unknown'), 4000);
+    }
+  }).catch(function(e) {
+    showToast('New chat error: ' + e.message, 4000);
+  }).finally(function() {
+    chatSwitching = false;
+    $newChatBtn.disabled = false;
+    disableAllControls(false);
+  });
+}
+
+// ── Tabs ──
+var activeTab = 'chat';
+var $chatView = $('chat-view');
+var $termView = $('terminal-view');
+var $termOutput = $('terminal-output');
+var $termInfo = $('term-info');
+
+function switchTab(tab) {
+  activeTab = tab;
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === tab);
+  }
+  if (tab === 'chat') {
+    $chatView.classList.remove('hidden');
+    $termView.classList.remove('visible');
+  } else {
+    $chatView.classList.add('hidden');
+    $termView.classList.add('visible');
+    if (!terminalContent) fetchTerminal();
+    if (!termPresetsFetched) fetchPresets();
+    scrollTerminalToBottom(true);
+  }
+}
+
+// ── Terminal ──
+var terminalContent = '';
+var terminalUserScrolled = false;
+var $termPresets = $('term-presets');
+var $termInput = $('term-input');
+var $termSend = $('term-send');
+var $termCtrlC = $('term-ctrl-c');
+var $termNew = $('term-new');
+var $termKill = $('term-kill');
+var termKillBusy = false;
+var termNewBusy = false;
+var termTabSelecting = false;
+var lastTerminalTabsSnapshot = null;
+var termPresetsServer = [];
+var termPresetsFetched = false;
+var termPresets = [];
+var termSending = false;
+var TERM_PRESETS_USER_KEY = 'v2_terminal_presets_user';
+var termPresetEditCtx = null;
+
+// URL regex for linkification
+var URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+
+function linkifyText(text) {
+  var parts = text.split(URL_RE);
+  var frag = document.createDocumentFragment();
+  for (var i = 0; i < parts.length; i++) {
+    if (URL_RE.test(parts[i])) {
+      var a = document.createElement('a');
+      a.href = parts[i];
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = parts[i];
+      frag.appendChild(a);
+    } else {
+      frag.appendChild(document.createTextNode(parts[i]));
+    }
+    URL_RE.lastIndex = 0;
+  }
+  return frag;
+}
+
+function renderTerminalTabs(tabs) {
+  var bar = $('term-tabs-bar');
+  var list = $('term-tabs-list');
+  if (!bar || !list) return;
+  if (!tabs || !tabs.length) {
+    bar.classList.add('is-hidden');
+    list.innerHTML = '';
+    return;
+  }
+  bar.classList.remove('is-hidden');
+  list.innerHTML = '';
+  for (var i = 0; i < tabs.length; i++) {
+    var t = tabs[i];
+    var ix = typeof t.index === 'number' ? t.index : i;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'term-tab-chip' + (t.active ? ' active' : '');
+    btn.textContent = t.title || ('#' + (ix + 1));
+    btn.disabled = !!termTabSelecting;
+    (function(idx) {
+      btn.onclick = function() { doSelectTerminalTab(idx); };
+    })(ix);
+    list.appendChild(btn);
+  }
+}
+
+function doSelectTerminalTab(index) {
+  if (termTabSelecting || termSending || termKillBusy || termNewBusy) return;
+  termTabSelecting = true;
+  if (lastTerminalTabsSnapshot && lastTerminalTabsSnapshot.length) {
+    renderTerminalTabs(lastTerminalTabsSnapshot);
+  }
+  fetch(BASE + '/terminal/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ index: index }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (j && !j.ok) showToast('מעבר טאב: ' + (j.error || 'נכשל'), 3000);
+  }).catch(function(e) {
+    showToast('מעבר טאב: ' + e.message, 3000);
+  }).finally(function() {
+    termTabSelecting = false;
+    fetchTerminal();
+  });
+}
+
+function updateTerminal(data) {
+  if (!data || !data.available) {
+    lastTerminalTabsSnapshot = null;
+    renderTerminalTabs(null);
+    if (data && data.error) {
+      var err = data.error;
+      var isHebrew = /[\u0590-\u05FF]/.test(err);
+      $termOutput.textContent = isHebrew ? err : ('אין גישה לטרמינל: ' + err);
+    } else {
+      $termOutput.textContent = 'ממתין לטרמינל… אם אין טרמינל פתוח ב-Cursor במחשב, לחץ Terminal → New Terminal (או Ctrl+Shift+`) ונסה שוב.';
+    }
+    $termInfo.textContent = 'לא זמין';
+    return;
+  }
+  lastTerminalTabsSnapshot = Array.isArray(data.tabs) ? data.tabs : [];
+  renderTerminalTabs(lastTerminalTabsSnapshot.length ? lastTerminalTabsSnapshot : null);
+
+  $termInfo.textContent = (data.tabName || '—') + ' · ' + data.lineCount + ' lines · ' + data.cols + 'x' + data.rows;
+
+  var newContent = data.content || '';
+  if (newContent === terminalContent) {
+    return;
+  }
+  terminalContent = newContent;
+  $termOutput.innerHTML = '';
+  if (!terminalContent) {
+    $termOutput.textContent = '(empty)';
+  } else {
+    $termOutput.appendChild(linkifyText(terminalContent));
+  }
+  scrollTerminalToBottom(false);
+}
+
+function scrollTerminalToBottom(force) {
+  if (terminalUserScrolled && !force) return;
+  $termOutput.scrollTop = $termOutput.scrollHeight;
+}
+
+$termOutput.addEventListener('scroll', function() {
+  var atBottom = $termOutput.scrollHeight - $termOutput.scrollTop - $termOutput.clientHeight < 40;
+  terminalUserScrolled = !atBottom;
+});
+
+function fetchTerminal() {
+  var url = BASE + '/terminal';
+  var opts = { headers: { 'Authorization': 'Bearer ' + TOKEN } };
+  function done(data) {
+    if (data) updateTerminal(data);
+  }
+  fetch(url, opts)
+  .then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  })
+  .then(function(data) {
+    if (data) done(data);
+  })
+  .catch(function() {
+    fetch(url, opts)
+      .then(function(r) {
+        if (r.status === 401) { logout(); return null; }
+        return r.json();
+      })
+      .then(function(data) {
+        if (data) done(data);
+      })
+      .catch(function() {
+        showToast('טרמינל: לא נטען — בדוק relay וחיבור לרשת', 4000);
+      });
+  });
+}
+
+// ── Terminal input ──
+$termInput.addEventListener('input', function() {
+  $termInput.style.height = 'auto';
+  $termInput.style.height = Math.min($termInput.scrollHeight, 80) + 'px';
+});
+$termInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doTermSend(); }
+});
+$termSend.addEventListener('click', doTermSend);
+if ($termCtrlC) $termCtrlC.addEventListener('click', doTermCtrlC);
+if ($termNew) $termNew.addEventListener('click', doTermNew);
+if ($termKill) $termKill.addEventListener('click', doTermKill);
+
+function doTermSend() {
+  var text = $termInput.value;
+  if (!text || termSending) return;
+  sendTerminalInput(text, true);
+  $termInput.value = '';
+  $termInput.style.height = 'auto';
+}
+
+function doTermCtrlC() {
+  if (termSending) return;
+  sendTerminalInput('\u0003', false);
+}
+
+function doTermNew() {
+  if (termNewBusy || termKillBusy || termSending) return;
+  termNewBusy = true;
+  if ($termCtrlC) $termCtrlC.disabled = true;
+  if ($termNew) $termNew.disabled = true;
+  if ($termKill) $termKill.disabled = true;
+  fetch(BASE + '/terminal/new', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({}),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (j && !j.ok) {
+      showToast('New Terminal: ' + (j.error || 'נכשל'), 3500);
+    } else {
+      showToast('נפתח New Terminal ב-Cursor', 2200);
+    }
+  }).catch(function(e) {
+    showToast('New Terminal: ' + e.message, 3500);
+  }).finally(function() {
+    termNewBusy = false;
+    if ($termCtrlC) $termCtrlC.disabled = false;
+    if ($termNew) $termNew.disabled = false;
+    if ($termKill && !termKillBusy) $termKill.disabled = false;
+    fetchTerminal();
+  });
+}
+
+function doTermKill() {
+  if (termKillBusy || termNewBusy || termSending) return;
+  if (!confirm('לClose את הטרמינל הפעיל ב-Cursor? הרצת פקודות תיפסק.')) return;
+  termKillBusy = true;
+  if ($termCtrlC) $termCtrlC.disabled = true;
+  if ($termNew) $termNew.disabled = true;
+  if ($termKill) $termKill.disabled = true;
+  fetch(BASE + '/terminal/kill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({}),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (j && !j.ok) {
+      showToast('סגירת טרמינל: ' + (j.error || 'נכשל'), 3500);
+    } else {
+      showToast('הטרמינל נסגר ב-Cursor', 2200);
+    }
+  }).catch(function(e) {
+    showToast('סגירת טרמינל: ' + e.message, 3500);
+  }).finally(function() {
+    termKillBusy = false;
+    if ($termCtrlC) $termCtrlC.disabled = false;
+    if ($termNew && !termNewBusy) $termNew.disabled = false;
+    if ($termKill) $termKill.disabled = false;
+    fetchTerminal();
+  });
+}
+
+function sendTerminalInput(text, enter) {
+  termSending = true;
+  $termSend.disabled = true;
+  if ($termCtrlC) $termCtrlC.disabled = true;
+  if ($termNew) $termNew.disabled = true;
+  if ($termKill) $termKill.disabled = true;
+  fetch(BASE + '/terminal/input', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ text: text, enter: !!enter }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (j && !j.ok) showToast('Terminal: ' + (j.error || 'failed'), 3000);
+  }).catch(function(e) {
+    showToast('Terminal error: ' + e.message, 3000);
+  }).finally(function() {
+    termSending = false;
+    $termSend.disabled = false;
+    if ($termCtrlC) $termCtrlC.disabled = false;
+    if ($termNew && !termNewBusy) $termNew.disabled = false;
+    if ($termKill && !termKillBusy) $termKill.disabled = false;
+    $termInput.focus();
+  });
+}
+
+// ── Terminal presets (server + localStorage merge) ──
+function loadUserPresetState() {
+  try {
+    var raw = localStorage.getItem(TERM_PRESETS_USER_KEY);
+    if (!raw) return { hidden: [], overrides: {}, custom: [] };
+    var o = JSON.parse(raw);
+    return {
+      hidden: Array.isArray(o.hidden) ? o.hidden : [],
+      overrides: o.overrides && typeof o.overrides === 'object' ? o.overrides : {},
+      custom: Array.isArray(o.custom) ? o.custom : [],
+    };
+  } catch (e) {
+    return { hidden: [], overrides: {}, custom: [] };
+  }
+}
+
+function saveUserPresetState(s) {
+  try {
+    localStorage.setItem(TERM_PRESETS_USER_KEY, JSON.stringify(s));
+  } catch (e) {}
+}
+
+function mergeTerminalPresets(server, user) {
+  var hiddenMap = {};
+  for (var hi = 0; hi < user.hidden.length; hi++) hiddenMap[user.hidden[hi]] = true;
+  var out = [];
+  var seen = {};
+  for (var si = 0; si < server.length; si++) {
+    var p = server[si];
+    if (!p || !p.id || hiddenMap[p.id]) continue;
+    var merged = Object.assign({}, p, user.overrides[p.id] || {});
+    out.push(merged);
+    seen[p.id] = true;
+  }
+  for (var ci = 0; ci < user.custom.length; ci++) {
+    var c = user.custom[ci];
+    if (!c || !c.id || seen[c.id]) continue;
+    out.push(Object.assign({}, c));
+    seen[c.id] = true;
+  }
+  return out;
+}
+
+function getServerPresetById(id) {
+  for (var i = 0; i < termPresetsServer.length; i++) {
+    if (termPresetsServer[i].id === id) return termPresetsServer[i];
+  }
+  return null;
+}
+
+function isUserCustomPresetId(id) {
+  var user = loadUserPresetState();
+  for (var i = 0; i < user.custom.length; i++) {
+    if (user.custom[i].id === id) return true;
+  }
+  return false;
+}
+
+function rebuildMergedPresets() {
+  termPresets = mergeTerminalPresets(termPresetsServer, loadUserPresetState());
+  renderPresets();
+}
+
+function fetchPresets() {
+  fetch(BASE + '/terminal/presets', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+  .then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  })
+  .then(function(data) {
+    termPresetsFetched = true;
+    termPresetsServer = (data && data.presets) || [];
+    rebuildMergedPresets();
+  }).catch(function() {
+    termPresetsFetched = true;
+    termPresetsServer = [];
+    rebuildMergedPresets();
+  });
+}
+
+function applyPreset(preset) {
+  if (preset.toInput) {
+    $termInput.value = preset.text || '';
+    $termInput.style.height = 'auto';
+    $termInput.style.height = Math.min($termInput.scrollHeight, 80) + 'px';
+    $termInput.focus();
+    showToast('המשך בעריכה ולחץ Run', 1800);
+    return;
+  }
+  sendTerminalInput(preset.text, preset.enter !== false);
+}
+
+function renderPresets() {
+  $termPresets.innerHTML = '';
+  if (!termPresets.length) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'color:var(--text-tertiary);font-size:13px;padding:8px 4px;text-align:center;';
+    if (termPresetsServer.length) {
+      empty.textContent = 'אין פקודות ברשימה — ייתכן שהכול מוסתר. פתח "Edit & Add" לשחזור או הוסף חדשות.';
+    } else {
+      empty.textContent = 'אין פריסטים מהשרת — בדוק שקובץ terminal-presets.json קיים, או הוסף פקודות מ"Edit & Add".';
+    }
+    $termPresets.appendChild(empty);
+    return;
+  }
+
+  var order = [];
+  var seen = {};
+  for (var oi = 0; oi < termPresets.length; oi++) {
+    var g = termPresets[oi].group || 'כללי';
+    if (!seen[g]) { seen[g] = true; order.push(g); }
+  }
+
+  for (var gi = 0; gi < order.length; gi++) {
+    var groupName = order[gi];
+    var wrap = document.createElement('div');
+    wrap.className = 'term-presets-group';
+
+    var gt = document.createElement('div');
+    gt.className = 'term-presets-group-title';
+    gt.textContent = groupName;
+    wrap.appendChild(gt);
+
+    var grid = document.createElement('div');
+    grid.className = 'term-presets-grid';
+
+    for (var pi = 0; pi < termPresets.length; pi++) {
+      var p = termPresets[pi];
+      if ((p.group || 'כללי') !== groupName) continue;
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'preset-chip';
+      var lab = document.createElement('span');
+      lab.className = 'preset-chip-label';
+      lab.textContent = p.label || p.id || '';
+      btn.appendChild(lab);
+      var hintText = p.hint != null ? p.hint : (p.text || '').replace(/\u0003/g, '^C');
+      if (hintText) {
+        var hint = document.createElement('span');
+        hint.className = 'preset-chip-hint';
+        hint.textContent = hintText;
+        btn.appendChild(hint);
+      }
+      btn.onclick = (function(pr) {
+        return function() { applyPreset(pr); };
+      })(p);
+      grid.appendChild(btn);
+    }
+    wrap.appendChild(grid);
+    $termPresets.appendChild(wrap);
+  }
+}
+
+function showTermPresetsManageListPane() {
+  var listPane = $('term-presets-manage-list-pane');
+  var editPane = $('term-presets-manage-edit-pane');
+  var title = $('term-presets-manage-title');
+  if (listPane) listPane.style.display = '';
+  if (editPane) editPane.style.display = 'none';
+  if (title) title.textContent = 'ניהול פקודות';
+}
+
+function showTermPresetsEditPane() {
+  var listPane = $('term-presets-manage-list-pane');
+  var editPane = $('term-presets-manage-edit-pane');
+  var title = $('term-presets-manage-title');
+  if (listPane) listPane.style.display = 'none';
+  if (editPane) editPane.style.display = '';
+  if (title) title.textContent = termPresetEditCtx && termPresetEditCtx.mode === 'new' ? 'פקודה חדשה' : 'עריכת פקודה';
+}
+
+function getPresetBaseForEdit(id) {
+  var user = loadUserPresetState();
+  for (var i = 0; i < user.custom.length; i++) {
+    if (user.custom[i].id === id) return Object.assign({}, user.custom[i]);
+  }
+  var s = getServerPresetById(id);
+  if (s) return Object.assign({}, s, user.overrides[id] || {});
+  return { id: id, group: 'כללי', label: '', hint: '', text: '', enter: true, toInput: false };
+}
+
+function renderTermPresetsManageList() {
+  var root = $('term-presets-manage-list');
+  if (!root) return;
+  root.innerHTML = '';
+  var user = loadUserPresetState();
+
+  var activeTitle = document.createElement('div');
+  activeTitle.className = 'term-presets-manage-section-title';
+  activeTitle.textContent = 'מוצגות כעת';
+  root.appendChild(activeTitle);
+
+  if (!termPresets.length) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'color:var(--text-tertiary);font-size:14px;padding:8px 0;';
+    empty.textContent = 'אין פקודות פעילות.';
+    root.appendChild(empty);
+  } else {
+    for (var ai = 0; ai < termPresets.length; ai++) {
+      (function(preset) {
+        var id = preset.id;
+        var row = document.createElement('div');
+        row.className = 'term-presets-manage-row';
+        var main = document.createElement('div');
+        main.className = 'term-presets-manage-row-main';
+        var t = document.createElement('div');
+        t.className = 'term-presets-manage-row-title';
+        t.textContent = preset.label || id || '';
+        var meta = document.createElement('div');
+        meta.className = 'term-presets-manage-row-meta';
+        var isCust = isUserCustomPresetId(id);
+        var src = isCust ? 'מותאם אישית' : 'ברירת מחדל';
+        if (user.overrides[id] && !isCust) src += ' · נערך';
+        meta.textContent = (preset.group || 'כללי') + ' · ' + src;
+        main.appendChild(t);
+        main.appendChild(meta);
+        var actions = document.createElement('div');
+        actions.className = 'term-presets-manage-row-actions';
+        var editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'term-presets-manage-edit';
+        editBtn.textContent = 'עריכה';
+        editBtn.onclick = function() {
+          termPresetEditCtx = { mode: 'edit', id: id, isCustom: isCust };
+          var base = getPresetBaseForEdit(id);
+          $('term-preset-edit-id').value = base.id || '';
+          $('term-preset-edit-label').value = base.label || '';
+          $('term-preset-edit-group').value = base.group || '';
+          $('term-preset-edit-hint').value = base.hint != null ? base.hint : '';
+          $('term-preset-edit-text').value = base.text != null ? base.text : '';
+          $('term-preset-edit-enter').checked = base.enter !== false;
+          $('term-preset-edit-toinput').checked = !!base.toInput;
+          showTermPresetsEditPane();
+        };
+        var remBtn = document.createElement('button');
+        remBtn.type = 'button';
+        remBtn.className = 'term-presets-manage-remove';
+        remBtn.textContent = isCust ? 'מחק' : 'הסר מהרשימה';
+        remBtn.onclick = function() {
+          var st = loadUserPresetState();
+          if (isCust) {
+            st.custom = st.custom.filter(function(c) { return c.id !== id; });
+          } else {
+            if (st.hidden.indexOf(id) < 0) st.hidden.push(id);
+            delete st.overrides[id];
+          }
+          saveUserPresetState(st);
+          rebuildMergedPresets();
+          renderTermPresetsManageList();
+          showToast(isCust ? 'נמחק' : 'הוסר מהרשימה', 2000);
+        };
+        actions.appendChild(editBtn);
+        actions.appendChild(remBtn);
+        row.appendChild(main);
+        row.appendChild(actions);
+        root.appendChild(row);
+      })(termPresets[ai]);
+    }
+  }
+
+  var hiddenIds = user.hidden.slice();
+  if (hiddenIds.length) {
+    var hidTitle = document.createElement('div');
+    hidTitle.className = 'term-presets-manage-section-title';
+    hidTitle.textContent = 'מוסתרות (ברירת מחדל)';
+    root.appendChild(hidTitle);
+    for (var hi = 0; hi < hiddenIds.length; hi++) {
+      (function(hid) {
+        var sp = getServerPresetById(hid);
+        var row = document.createElement('div');
+        row.className = 'term-presets-manage-row';
+        var main = document.createElement('div');
+        main.className = 'term-presets-manage-row-main';
+        var t = document.createElement('div');
+        t.className = 'term-presets-manage-row-title';
+        t.textContent = sp ? (sp.label || hid) : hid;
+        var meta = document.createElement('div');
+        meta.className = 'term-presets-manage-row-meta';
+        meta.textContent = sp ? (sp.group || 'כללי') + ' · מוסתר' : 'מוסתר';
+        main.appendChild(t);
+        main.appendChild(meta);
+        var actions = document.createElement('div');
+        actions.className = 'term-presets-manage-row-actions';
+        var restBtn = document.createElement('button');
+        restBtn.type = 'button';
+        restBtn.className = 'term-presets-manage-restore';
+        restBtn.textContent = 'שחזר';
+        restBtn.onclick = function() {
+          var st = loadUserPresetState();
+          st.hidden = st.hidden.filter(function(x) { return x !== hid; });
+          saveUserPresetState(st);
+          rebuildMergedPresets();
+          renderTermPresetsManageList();
+          showToast('שוחזר', 1800);
+        };
+        actions.appendChild(restBtn);
+        row.appendChild(main);
+        row.appendChild(actions);
+        root.appendChild(row);
+      })(hiddenIds[hi]);
+    }
+  }
+}
+
+function openTermPresetsManage() {
+  termPresetEditCtx = null;
+  showTermPresetsManageListPane();
+  renderTermPresetsManageList();
+  $('term-presets-manage-overlay').classList.add('visible');
+}
+
+function closeTermPresetsManage(ev) {
+  if (ev && ev.target && ev.target.id !== 'term-presets-manage-overlay') return;
+  $('term-presets-manage-overlay').classList.remove('visible');
+  termPresetEditCtx = null;
+  showTermPresetsManageListPane();
+}
+
+function saveTermPresetFromForm() {
+  var ctx = termPresetEditCtx;
+  if (!ctx) return;
+  var label = ($('term-preset-edit-label').value || '').trim();
+  var group = ($('term-preset-edit-group').value || '').trim() || 'כללי';
+  var hint = ($('term-preset-edit-hint').value || '').trim();
+  var text = $('term-preset-edit-text').value;
+  var toInput = $('term-preset-edit-toinput').checked;
+  var enter = $('term-preset-edit-enter').checked;
+  if (!label) {
+    showToast('חסרה Label', 2500);
+    return;
+  }
+  if (!String(text).trim() && !toInput) {
+    showToast('חסר טקסט פקודה', 2500);
+    return;
+  }
+  if (toInput) enter = false;
+  var st = loadUserPresetState();
+  if (ctx.mode === 'new') {
+    var nid = 'user-' + Date.now();
+    var np = {
+      id: nid,
+      group: group,
+      label: label,
+      text: text,
+      enter: toInput ? false : enter,
+      toInput: !!toInput,
+    };
+    if (hint) np.hint = hint;
+    st.custom.push(np);
+    saveUserPresetState(st);
+    showToast('נשמר', 2000);
+  } else {
+    var id = ctx.id;
+    var full = {
+      id: id,
+      group: group,
+      label: label,
+      text: text,
+      enter: toInput ? false : enter,
+      toInput: !!toInput,
+    };
+    if (hint) full.hint = hint;
+    if (ctx.isCustom) {
+      st.custom = st.custom.map(function(c) { return c.id === id ? full : c; });
+    } else {
+      st.overrides[id] = full;
+    }
+    saveUserPresetState(st);
+    showToast('נשמר', 2000);
+  }
+  rebuildMergedPresets();
+  termPresetEditCtx = null;
+  showTermPresetsManageListPane();
+  renderTermPresetsManageList();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var mo = $('term-presets-manage-open');
+  if (mo) {
+    mo.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openTermPresetsManage();
+    });
+  }
+  var addBtn = $('term-presets-add-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', function() {
+      termPresetEditCtx = { mode: 'new' };
+      $('term-preset-edit-id').value = '(חדש)';
+      $('term-preset-edit-label').value = '';
+      $('term-preset-edit-group').value = '';
+      $('term-preset-edit-hint').value = '';
+      $('term-preset-edit-text').value = '';
+      $('term-preset-edit-enter').checked = true;
+      $('term-preset-edit-toinput').checked = false;
+      showTermPresetsEditPane();
+    });
+  }
+  var resetBtn = $('term-presets-reset-all-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function() {
+      if (!confirm('לאפס את כל ההתאמות המקומיות (מוסתרות, עריכות ופקודות אישיות)?')) return;
+      try { localStorage.removeItem(TERM_PRESETS_USER_KEY); } catch (e) {}
+      rebuildMergedPresets();
+      renderTermPresetsManageList();
+      showToast('הותאמות אופסו', 2500);
+    });
+  }
+  var cancelEdit = $('term-preset-edit-cancel');
+  if (cancelEdit) {
+    cancelEdit.addEventListener('click', function() {
+      termPresetEditCtx = null;
+      showTermPresetsManageListPane();
+      renderTermPresetsManageList();
+    });
+  }
+  var saveEdit = $('term-preset-edit-save');
+  if (saveEdit) saveEdit.addEventListener('click', saveTermPresetFromForm);
+  var toIn = $('term-preset-edit-toinput');
+  if (toIn) {
+    toIn.addEventListener('change', function() {
+      if (toIn.checked) $('term-preset-edit-enter').checked = false;
+    });
+  }
+  var ent = $('term-preset-edit-enter');
+  if (ent) {
+    ent.addEventListener('change', function() {
+      if (ent.checked) $('term-preset-edit-toinput').checked = false;
+    });
+  }
+});
+
+// ── Auth ──
+$('login-btn').addEventListener('click', doLogin);
+$pwInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+
+function doLogin() {
+  var pw = $pwInput.value.trim();
+  if (!pw) return;
+  $loginErr.style.display = 'none';
+  fetch(BASE + '/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw }),
+  }).then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
+  .then(function(d) {
+    if (!d.ok || !d.j.token) { showLoginErr(d.j.error || 'Login failed'); return; }
+    TOKEN = d.j.token;
+    localStorage.setItem('v2_token', TOKEN);
+    enterApp();
+  }).catch(function(e) { showLoginErr('Connection error: ' + e.message); });
+}
+function showLoginErr(msg) { $loginErr.textContent = msg; $loginErr.style.display = 'block'; }
+
+// ── App entry ──
+function enterApp() {
+  $login.style.display = 'none';
+  $app.style.display = 'flex';
+  loadState();
+  fetchProjects();
+  fetchPresets();
+  fetchChats();
+  connectWs();
+}
+
+function loadState(done) {
+  fetch(BASE + '/state', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+  .then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  })  .then(function(data) {
+    if (!data) return;
+    renderMessages(data.messages || []);
+    renderActions(data.pendingActions || []);
+    renderMode(data.currentMode || null);
+    updateStatus(data.activityState, data.windowTitle);
+    $count.textContent = (data.messageCount || 0) + ' msgs';
+    checkSendCorrelation(data);
+    if (data.activeProjectId) { activeProjectId = data.activeProjectId; renderProjectBtn(); }
+    if (data.currentModel) { currentModel = data.currentModel; renderModelBtn(); }
+    if (data.activeChatTitle !== undefined) { renderChatBtn(data.activeChatTitle); }
+    if (typeof done === 'function') {
+      try { done(data); } catch (e) {}
+    }
+  }).catch(function() { updateStatus('error'); });
+}
+
+// ── WebSocket ──
+function connectWs() {
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+  wsAttempts++;
+
+  var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.hostname + ':' + RELAY_PORT + '/ws?token=' + encodeURIComponent(TOKEN));
+
+  ws.onopen = function() {
+    wsBackoff = 2000;
+    wsAttempts = 0;
+    connectionState = 'connected';
+    // Clear any pending visibility timers — the blip is over, no reason to
+    // promote to `reconnecting` or `disconnected` after the fact.
+    if (reconnectingShowTimer) { clearTimeout(reconnectingShowTimer); reconnectingShowTimer = null; }
+    if (disconnectGraceTimer)  { clearTimeout(disconnectGraceTimer);  disconnectGraceTimer  = null; }
+    updateStatus(serverActivityState);
+  };
+  ws.onclose = function() {
+    // Only act on the connected → dropped edge. If we're already in a dropped
+    // state, the existing timers are still counting down — don't reset them.
+    if (connectionState === 'connected' && !reconnectingShowTimer && !disconnectGraceTimer) {
+      // Stage 1: silent grace. Stay on `connected` for RECONNECTING_SHOW_MS;
+      // if the WS comes back in that window, the user sees nothing.
+      reconnectingShowTimer = setTimeout(function() {
+        reconnectingShowTimer = null;
+        if (connectionState !== 'connected') return;
+        // Still dropped → surface `reconnecting`. Project switches also mask
+        // this via resolveConnectionState(), so the dot stays yellow-switching
+        // rather than flipping between reconnecting and switching_project.
+        connectionState = 'reconnecting';
+        updateStatus(null);
+        // Stage 2: after an additional DISCONNECT_GRACE_MS, give up and show
+        // `disconnected` — but again, projectSwitching masks this.
+        disconnectGraceTimer = setTimeout(function() {
+          disconnectGraceTimer = null;
+          if (connectionState === 'reconnecting') {
+            connectionState = 'disconnected';
+            updateStatus(null);
+          }
+        }, DISCONNECT_GRACE_MS);
+      }, RECONNECTING_SHOW_MS);
+    }
+    var delay = Math.min(wsBackoff * Math.pow(1.3, wsAttempts - 1), 30000);
+    setTimeout(connectWs, delay);
+  };
+  ws.onerror = function() {};
+  ws.onmessage = function(ev) {
+    try {
+      var data = JSON.parse(ev.data);
+      if (data.type === 'terminal_change' && data.terminal) {
+        updateTerminal(data.terminal);
+      }
+      if (data.snapshot && data.snapshot.messages) {
+        renderMessages(data.snapshot.messages);
+        renderActions(data.snapshot.pendingActions || []);
+        renderMode(data.snapshot.currentMode || null);
+        updateStatus(data.snapshot.activityState, data.snapshot.windowTitle);
+        $count.textContent = (data.snapshot.messageCount || 0) + ' msgs';
+        checkSendCorrelation(data.snapshot);
+        if (data.snapshot.activeProjectId) { activeProjectId = data.snapshot.activeProjectId; renderProjectBtn(); }
+        if (data.snapshot.currentModel) { currentModel = data.snapshot.currentModel; renderModelBtn(); }
+        if (data.snapshot.activeChatTitle !== undefined) { renderChatBtn(data.snapshot.activeChatTitle); }
+      }
+    } catch(e) {}
+  };
+}
+
+// ── Phone sleep/wake ──
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    if (connectionState !== 'connected') {
+      connectWs();
+    } else {
+      loadState();
+    }
+  }
+});
+
+// ── Send with correlation ──
+$send.addEventListener('click', doSend);
+
+/** Open Cursor's native edit flow for this human message (branch/continue dialog may appear). */
+function doEditMessageInCursor(flatIndex) {
+  if (typeof flatIndex !== 'number' || flatIndex < 0) return;
+  phoneEditTargetFlatIndex = flatIndex;
+  fetch(BASE + '/message/edit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ targetId: flatIndex, confirm: true }),
+  })
+    .then(function (r) {
+      if (r.status === 401) {
+        logout();
+        return null;
+      }
+      return r.json();
+    })
+    .then(function (j) {
+      if (!j) return;
+      if (j.status === 'opened') {
+        enterPhoneCursorEditMode();
+        showToast(
+          '\u05de\u05e6\u05d1 \u05e2\u05e8\u05d9\u05db\u05d4: \u05d4\u05d8\u05e7\u05e1\u05d8 \u05d4\u05d5\u05e2\u05ea\u05e7 \u05de\u05d4\u05d4\u05d5\u05d3\u05e2\u05d4 \u2014 \u05e2\u05e8\u05db\u05d5 \u05d5\u05e9\u05dc\u05d7\u05d5. \u05d0\u05dd \u05de\u05d5\u05e4\u05d9\u05e2 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2, \u05d1\u05d7\u05e8\u05d5 \u05db\u05d0\u05df.',
+          6200,
+        );
+        loadState(function () {
+          prefillPhoneEditFromMessages(phoneEditTargetFlatIndex);
+        });
+        return;
+      }
+      if (j.status === 'needs_confirmation' && j.dialog) {
+        cursorDialogConfirmKind = 'edit';
+        showRevertConfirmDialog(j.dialog);
+        showToast('לחצו על הבחירה הרצויה — הפעולה תתבצע ב-Cursor', 4200);
+        return;
+      }
+      phoneEditTargetFlatIndex = -1;
+      showToast('עריכה ב-Cursor: ' + (j.error || 'לא הצליח'), 4500);
+    })
+    .catch(function (e) {
+      phoneEditTargetFlatIndex = -1;
+      showToast('שגיאת עריכה: ' + e.message, 4000);
+    });
+}
+
+function doSend() {
+  var text = $input.value.trim();
+  if ((!text && pendingImages.length === 0) || $send.disabled) return;
+
+  if (phoneCursorEditActive) {
+    if (pendingImages.length > 0) {
+      showToast(
+        '\u05d1\u05de\u05e6\u05d1 \u05e2\u05e8\u05d9\u05db\u05d4 \u05dc\u05d0 \u05e0\u05d9\u05ea\u05df \u05dc\u05e6\u05e8\u05e3 \u05ea\u05de\u05d5\u05e0\u05d5\u05ea. \u05d4\u05e1\u05d9\u05e8\u05d5 \u05d0\u05d5 \u05dc\u05d7\u05e6\u05d5 \u00ab\u05d1\u05d9\u05d8\u05d5\u05dc\u00bb.',
+        4500,
+      );
+      return;
+    }
+    var applyPayload = $input.value;
+    if (!applyPayload.trim()) {
+      showToast('\u05d4\u05e7\u05dc\u05d9\u05d3\u05d5 \u05d8\u05e7\u05e1\u05d8 \u05dc\u05e2\u05e8\u05d9\u05db\u05d4.', 2500);
+      return;
+    }
+    isSending = true;
+    $send.disabled = true;
+    $send.innerHTML =
+      '<span class="switching-spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#000;"></span>';
+    $input.value = '';
+    $input.style.height = 'auto';
+    updateStatus(null);
+
+    var editBody = { confirm: true, text: applyPayload, submit: true };
+    if (typeof phoneEditTargetFlatIndex === 'number' && phoneEditTargetFlatIndex >= 0) {
+      editBody.targetId = phoneEditTargetFlatIndex;
+    }
+    fetch(BASE + '/message/edit/apply-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify(editBody),
+    })
+      .then(function (r) {
+        if (r.status === 401) {
+          logout();
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j) return;
+        if (!j.ok) {
+          showToast(
+            '\u05e2\u05d3\u05db\u05d5\u05df \u05e2\u05e8\u05d9\u05db\u05d4 \u05e0\u05db\u05e9\u05dc: ' + (j.error || ''),
+            5000,
+          );
+          return;
+        }
+        if (j.needs_confirmation && j.dialog) {
+          phoneEditPostSubmitDialog = true;
+          cursorDialogConfirmKind = 'edit';
+          showRevertConfirmDialog(j.dialog);
+          showToast(
+            '\u05e0\u05e4\u05ea\u05d7 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2 \u05d1\u05d7\u05d9\u05e8\u05d4 \u2014 \u05dc\u05d7\u05e6\u05d5 \u05db\u05de\u05d5 \u05d1-Cursor',
+            4500,
+          );
+          loadState();
+          return;
+        }
+        return fetch(BASE + '/message/edit/poll-dialog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+          body: JSON.stringify({ confirm: true, maxMs: 10000 }),
+        })
+          .then(function (r) {
+            if (r.status === 401) {
+              logout();
+              return null;
+            }
+            return r.json();
+          })
+          .then(function (p) {
+            if (!p) return;
+            if (p.ok && p.dialog && p.dialog.buttons && p.dialog.buttons.length) {
+              phoneEditPostSubmitDialog = true;
+              cursorDialogConfirmKind = 'edit';
+              showRevertConfirmDialog(p.dialog);
+              showToast(
+                '\u05e0\u05d9\u05de\u05e6\u05d0 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2 \u05d1\u05d7\u05d9\u05e8\u05d4 \u2014 \u05dc\u05d7\u05e6\u05d5 \u05db\u05de\u05d5 \u05d1-Cursor',
+                4500,
+              );
+            } else {
+              exitPhoneCursorEditMode(true);
+              showToast('\u05d4\u05d8\u05e7\u05e1\u05d8 \u05e2\u05d5\u05d3\u05db\u05df \u05d1-Cursor', 2800);
+            }
+            loadState();
+          })
+          .catch(function (e) {
+            showToast('\u05d3\u05d9\u05d0\u05dc\u05d5\u05d2: ' + e.message, 4000);
+            exitPhoneCursorEditMode(true);
+            loadState();
+          });
+      })
+      .catch(function (e) {
+        showToast('\u05e9\u05d2\u05d9\u05d0\u05ea \u05e8\u05e9\u05ea: ' + e.message, 4000);
+      })
+      .finally(function () {
+        isSending = false;
+        $send.disabled = false;
+        $send.innerHTML =
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
+        updateSendStop();
+      });
+    return;
+  }
+
+  isSending = true;
+  $send.disabled = true;
+  $send.innerHTML = '<span class="switching-spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#000;"></span>';
+  $input.value = '';
+  $input.style.height = 'auto';
+  updateStatus(null);
+
+  optimisticText = text;
+  var imgsForOpt = pendingImages.slice();
+  pendingImages = [];
+  renderPreviewArea();
+  var optEl = buildMsg({ type: 'human', text: text, flatIndex: -1, id: 'opt', mentions: [], images: imgsForOpt });
+  optEl.classList.add('optimistic');
+  $msgs.appendChild(optEl);
+  autoScroll = true;
+  scrollToBottom();
+
+  fetch(BASE + '/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ prompt: text, images: imgsForOpt }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (!j.ok) {
+      showToast('Send failed: ' + (j.error || 'unknown'), 4000);
+    } else if (j.sentAt) {
+      lastSendCorrelation = {
+        sentAt: j.sentAt,
+        messageCountAtSend: j.messageCountAtSend || 0,
+        promptPrefix: text.substring(0, 30),
+      };
+    }
+  }).catch(function(e) {
+    showToast('Send error: ' + e.message, 4000);
+  }).finally(function() {
+    isSending = false;
+    $send.disabled = false;
+    $send.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
+    updateStatus(null);
+  });
+}
+
+// ── Stop generation ──
+var isStopping = false;
+function doStop() {
+  if (isStopping || $stop.disabled) return;
+  isStopping = true;
+  $stop.disabled = true;
+  $stop.innerHTML = '<span class="switching-spinner" style="width:14px;height:14px;border-width:2px;border-top-color:var(--text);"></span>';
+
+  fetch(BASE + '/stop', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN },
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (!j.ok) showToast('Stop failed: ' + (j.error || 'unknown'), 3000);
+    loadState();
+  }).catch(function(e) {
+    showToast('Stop error: ' + e.message, 3000);
+  }).finally(function() {
+    isStopping = false;
+    $stop.disabled = false;
+    $stop.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>';
+    updateSendStop();
+  });
+}
+
+function updateSendStop() {
+  var showStop = (!isSending && serverActivityState === 'responding') || isStopping;
+  $send.style.display = showStop ? 'none' : 'flex';
+  $stop.style.display = showStop ? 'flex' : 'none';
+}
+
+// ── Send/response correlation ──
+function checkSendCorrelation(data) {
+  if (!lastSendCorrelation) return;
+  var msgs = data.messages || [];
+  var mc = data.messageCount || msgs.length;
+  if (mc > lastSendCorrelation.messageCountAtSend) {
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].type === 'human') {
+        if (!lastSendCorrelation.promptPrefix || (msgs[i].text && msgs[i].text.indexOf(lastSendCorrelation.promptPrefix) !== -1)) {
+          lastSendCorrelation = null;
+          return;
+        }
+      }
+    }
+  }
+  if (Date.now() - lastSendCorrelation.sentAt > 15000) {
+    lastSendCorrelation = null;
+  }
+}
+
+// ── Action handler with precise targeting ──
+function doAction(action, flatIndex, buttonIndex) {
+  var body = { action: action };
+  if (flatIndex !== undefined) body.targetId = flatIndex;
+  if (buttonIndex !== undefined) body.buttonIndex = buttonIndex;
+
+  var allBtns = $actionsBar.querySelectorAll('button');
+  for (var i = 0; i < allBtns.length; i++) allBtns[i].disabled = true;
+
+  fetch(BASE + '/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify(body),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    if (!j.ok) showToast(action + ' failed: ' + (j.error || ''), 3000);
+    loadState();
+  }).catch(function(e) {
+    showToast(action + ' error: ' + e.message, 3000);
+  }).finally(function() {
+    setTimeout(function() {
+      var btns = $actionsBar.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) btns[i].disabled = false;
+    }, 800);
+  });
+}
+
+// ── Revert (Cursor Restore Checkpoint) ──
+// Two-gesture flow:
+//   1. openRevertSheet → user reads warning, taps "Start Revert"
+//   2. doRevertStart posts /revert. If Cursor shows a destructive dialog, the
+//      server returns needs_confirmation and we surface the EXACT buttons for
+//      a second explicit tap. We never auto-pick "Revert All".
+var pendingRevert = null; // { flatIndex, locator }
+/** When the choice overlay is open: which POST /.../confirm to call. */
+var cursorDialogConfirmKind = 'revert'; // 'revert' | 'edit'
+/** After Cursor opens the native edit composer: sends from the phone bar go to CDP, not /send. */
+var phoneCursorEditActive = false;
+/** Human message flatIndex for /message/edit/apply-text — must match the bubble being edited (not the bottom composer). */
+var phoneEditTargetFlatIndex = -1;
+/** Choice dialog was opened by Cursor after submitting edited text (not the pre-edit dialog). */
+var phoneEditPostSubmitDialog = false;
+var PROMPT_INPUT_PLACEHOLDER_DEFAULT = 'Message...';
+
+function syncPhoneEditChrome() {
+  var area = document.getElementById('composer-area');
+  var hint = document.getElementById('phone-edit-hint');
+  if (area) {
+    if (phoneCursorEditActive) area.classList.add('phone-edit-mode');
+    else area.classList.remove('phone-edit-mode');
+  }
+  if (hint) {
+    if (phoneCursorEditActive) hint.classList.add('visible');
+    else hint.classList.remove('visible');
+  }
+  if ($input) {
+    $input.placeholder = phoneCursorEditActive
+      ? '\u05e2\u05e8\u05d9\u05db\u05d4 \u2014 \u05d4\u05e9\u05dc\u05d9\u05d7\u05d4 \u05de\u05e2\u05d3\u05db\u05e0\u05ea \u05d1-Cursor\u2026'
+      : PROMPT_INPUT_PLACEHOLDER_DEFAULT;
+  }
+}
+
+function exitPhoneCursorEditMode(silent) {
+  phoneCursorEditActive = false;
+  phoneEditTargetFlatIndex = -1;
+  phoneEditPostSubmitDialog = false;
+  syncPhoneEditChrome();
+  if (!silent) {
+    showToast('\u05d9\u05e6\u05d0\u05ea \u05de\u05de\u05e6\u05d1 \u05e2\u05e8\u05d9\u05db\u05d4 \u05de\u05d4\u05d8\u05dc\u05e4\u05d5\u05df', 2000);
+  }
+}
+
+function prefillPhoneEditFromMessages(flatIndex) {
+  if (typeof flatIndex !== 'number' || flatIndex < 0 || !$input) return;
+  var msgs = prevMsgs && prevMsgs.length ? prevMsgs : [];
+  for (var i = 0; i < msgs.length; i++) {
+    if (msgs[i].type === 'human' && msgs[i].flatIndex === flatIndex) {
+      var t = msgs[i].text != null ? String(msgs[i].text) : '';
+      $input.value = t;
+      $input.style.height = 'auto';
+      $input.style.height = Math.min($input.scrollHeight, 120) + 'px';
+      return;
+    }
+  }
+}
+
+function enterPhoneCursorEditMode() {
+  phoneCursorEditActive = true;
+  syncPhoneEditChrome();
+  if (typeof phoneEditTargetFlatIndex === 'number' && phoneEditTargetFlatIndex >= 0) {
+    prefillPhoneEditFromMessages(phoneEditTargetFlatIndex);
+  }
+}
+
+function openRevertSheet(flatIndex, locatorKind, previewText) {
+  pendingRevert = { flatIndex: flatIndex, locator: locatorKind || '' };
+  var prev = $('revert-preview');
+  if (prev) prev.textContent = previewText || '(no preview)';
+  var startBtn = $('revert-start-btn');
+  if (startBtn) startBtn.disabled = false;
+  $('revert-overlay').classList.add('visible');
+}
+
+function closeRevertSheet(ev) {
+  if (ev && ev.target && ev.target.id !== 'revert-overlay') return;
+  $('revert-overlay').classList.remove('visible');
+  if (!$('revert-confirm-overlay').classList.contains('visible')) {
+    pendingRevert = null;
+  }
+}
+
+function closeRevertConfirm(ev) {
+  if (ev && ev.target && ev.target.id !== 'revert-confirm-overlay') return;
+  $('revert-confirm-overlay').classList.remove('visible');
+  pendingRevert = null;
+  cursorDialogConfirmKind = 'revert';
+}
+
+function doRevertStart() {
+  if (!pendingRevert) return;
+  var pr = pendingRevert;
+  var startBtn = $('revert-start-btn');
+  if (startBtn) startBtn.disabled = true;
+
+  var body = { targetId: pr.flatIndex, confirm: true };
+  if (pr.locator) body.locatorKind = pr.locator;
+
+  fetch(BASE + '/revert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify(body),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+
+    if (j.status === 'reverted') {
+      closeRevertSheet();
+      showToast('Reverted via Cursor', 2500);
+      loadState();
+      return;
+    }
+
+    if (j.status === 'needs_confirmation' && j.dialog) {
+      // Hide the warning sheet, surface the actual Cursor dialog contents.
+      $('revert-overlay').classList.remove('visible');
+      cursorDialogConfirmKind = 'revert';
+      showRevertConfirmDialog(j.dialog);
+      return;
+    }
+
+    // failed
+    closeRevertSheet();
+    showToast('Revert failed: ' + (j.error || 'unknown'), 4000);
+    loadState();
+  }).catch(function(e) {
+    if (startBtn) startBtn.disabled = false;
+    showToast('Revert error: ' + e.message, 4000);
+  });
+}
+
+function showRevertConfirmDialog(dialog) {
+  $('revert-dlg-title').textContent = dialog.title || 'Cursor confirmation';
+  $('revert-dlg-body').textContent = dialog.body || '';
+
+  var btnsRoot = $('revert-dlg-btns');
+  btnsRoot.innerHTML = '';
+  var buttons = dialog.buttons || [];
+
+  if (buttons.length === 0) {
+    var note = document.createElement('div');
+    note.style.color = 'var(--dim)';
+    note.style.fontSize = '12px';
+    note.textContent = 'No buttons detected. Use Cursor directly on desktop.';
+    btnsRoot.appendChild(note);
+  } else {
+    for (var i = 0; i < buttons.length; i++) {
+      (function(btnSpec) {
+        var b = document.createElement('button');
+        b.className = btnSpec.kind || 'other';
+        b.textContent = btnSpec.text;
+        b.onclick = function() {
+          doRevertConfirm(btnSpec.text, btnSpec.kind);
+        };
+        btnsRoot.appendChild(b);
+      })(buttons[i]);
+    }
+  }
+
+  $('revert-confirm-overlay').classList.add('visible');
+}
+
+function doRevertConfirm(buttonText, kind) {
+  var dialogKind = cursorDialogConfirmKind;
+  // Disable all dialog buttons to prevent double-tap.
+  var all = $('revert-dlg-btns').querySelectorAll('button');
+  for (var i = 0; i < all.length; i++) all[i].disabled = true;
+
+  // If the user picked a non-destructive button we still need to actually click
+  // it in Cursor (e.g. "Cancel" should dismiss the prompt). Send the exact
+  // buttonText so the server clicks the right one.
+  var confirmUrl = BASE + (dialogKind === 'edit' ? '/message/edit/confirm' : '/revert/confirm');
+  fetch(confirmUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ confirm: true, buttonText: buttonText }),
+  }).then(function(r) {
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }).then(function(j) {
+    if (!j) return;
+    closeRevertConfirm();
+    if (j.ok) {
+      if (dialogKind === 'edit') {
+        if (phoneEditPostSubmitDialog) {
+          phoneEditPostSubmitDialog = false;
+          exitPhoneCursorEditMode(true);
+          if (kind === 'cancel') {
+            showToast('\u05d1\u05d5\u05d8\u05dc', 2000);
+          } else {
+            showToast('\u05e0\u05d1\u05d7\u05e8: ' + (j.clicked || buttonText), 3500);
+          }
+        } else if (kind === 'cancel') {
+          exitPhoneCursorEditMode(true);
+          showToast('\u05d1\u05d5\u05d8\u05dc', 2000);
+        } else {
+          enterPhoneCursorEditMode();
+          showToast(
+            '\u05e0\u05d1\u05d7\u05e8: ' +
+              (j.clicked || buttonText) +
+              ' \u2014 \u05db\u05ea\u05d1\u05d5 \u05d1\u05e9\u05d5\u05e8\u05d4 \u05dc\u05de\u05d8\u05d4 \u05d5\u05e9\u05dc\u05d7\u05d5.',
+            4500,
+          );
+        }
+      } else {
+        if (kind === 'destructive') {
+          showToast('Revert confirmed: ' + j.clicked, 3000);
+        } else if (kind === 'cancel') {
+          showToast('\u05d1\u05d5\u05d8\u05dc', 2000);
+        } else {
+          showToast('\u05e0\u05d1\u05d7\u05e8: ' + j.clicked, 2000);
+        }
+      }
+      loadState();
+    } else {
+      showToast('Confirm failed: ' + (j.error || 'unknown'), 4000);
+    }
+  }).catch(function(e) {
+    showToast('Confirm error: ' + e.message, 4000);
+    for (var i = 0; i < all.length; i++) all[i].disabled = false;
+  });
+}
+
+// ── Pending actions bar ──
+function renderActions(actions) {
+  var list = actions || [];
+  if (list.length === 0) {
+    $actionsBar.className = '';
+    $actionsBar.innerHTML = '';
+    return;
+  }
+  $actionsBar.className = 'visible';
+  var html = '<div class="actions-header">Pending Actions</div>';
+  var seen = {};
+  for (var i = 0; i < list.length; i++) {
+    var a = list[i];
+    if (a.category === 'reject' || a.category === 'skip') continue;
+    var key = a.category + ':' + a.flatIndex;
+    if (seen[key]) continue;
+    seen[key] = true;
+    var ctx = a.context || a.buttonText;
+    html += '<div class="action-item">';
+    html += '<span class="action-context">' + escHtml(ctx) + '</span>';
+    html += '<div class="action-btns">';
+    if (a.category === 'approve') {
+      html += '<button class="action-btn-approve" onclick="doAction(\'approve\',' + a.flatIndex + ',' + a.buttonIndex + ')">Approve</button>';
+      html += '<button class="action-btn-reject" onclick="doAction(\'reject\',' + a.flatIndex + ')">Reject</button>';
+    } else if (a.category === 'run') {
+      html += '<button class="action-btn-run" onclick="doAction(\'run\',' + a.flatIndex + ',' + a.buttonIndex + ')">Run</button>';
+      html += '<button class="action-btn-skip" onclick="doAction(\'skip\',' + a.flatIndex + ')">Skip</button>';
+    } else {
+      html += '<button class="action-btn-approve" onclick="doAction(\'' + escHtml(a.category) + '\',' + a.flatIndex + ',' + a.buttonIndex + ')">' + escHtml(a.buttonText) + '</button>';
+    }
+    html += '</div></div>';
+  }
+  $actionsBar.innerHTML = html;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;');
+}
+
+// ── Markdown / HTML (safe) ──
+function getMarkedParse() {
+  if (typeof marked === 'undefined') return null;
+  if (typeof marked.parse === 'function') return marked.parse.bind(marked);
+  return null;
+}
+
+/** Legacy tiny formatter when CDN libs fail. */
+function renderMdLegacy(text) {
+  var esc = String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  var blocks = [];
+  esc = esc.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
+    blocks.push('<pre class="code-block"><code>' + code + '</code></pre>');
+    return '\x00B' + (blocks.length - 1) + '\x00';
+  });
+  esc = esc.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  esc = esc.replace(/\n/g, '<br>');
+  esc = esc.replace(/\x00B(\d+)\x00/g, function (_, i) {
+    return blocks[parseInt(i, 10)];
+  });
+  return esc;
+}
+
+function sanitizeChatHtml(html) {
+  if (!html) return '';
+  if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+    return DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+      ADD_ATTR: ['target', 'rel'],
+    });
+  }
+  return renderMdLegacy(String(html).replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+}
+
+/** Plain markdown string → safe HTML (GFM tables, lists, code). */
+function safeMarkdownToHtml(text) {
+  var src = String(text || '');
+  var parse = getMarkedParse();
+  if (parse && typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+    try {
+      var raw = parse(src, { gfm: true, breaks: true });
+      return DOMPurify.sanitize(raw, {
+        USE_PROFILES: { html: true },
+        ADD_ATTR: ['target', 'rel'],
+      });
+    } catch (e) {
+      return renderMdLegacy(src);
+    }
+  }
+  return renderMdLegacy(src);
+}
+
+/** Assistant bubble: prefer Cursor's `.markdown-root` HTML, else parse `text` as Markdown. */
+function renderAssistantBody(m) {
+  if (m.html && typeof m.html === 'string' && m.html.length > 0) {
+    return sanitizeChatHtml(m.html);
+  }
+  return safeMarkdownToHtml(m.text || '');
+}
+
+/** Guess file basename from tool action/details (Cursor shows paths in headers). */
+function parseToolFileLabel(action, details, snippet) {
+  var pool = [action || '', details || '', (snippet || '').split(/\r?\n/)[0] || ''].join(' ');
+  var m = pool.match(/([\w\-\.]+\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|html|htm|css|scss|json|md|mdx|py|rs|go|cs|java|kt|swift|cpp|cc|hpp|h|vue|svelte|php|rb|yaml|yml|toml|xml|sql|sh|ps1|csproj|sln))/i);
+  if (m) return m[1];
+  m = pool.match(/`([^`]+\.[\w]+)`/);
+  if (m) {
+    var p = m[1].split(/[/\\]/);
+    return p[p.length - 1] || m[1];
+  }
+  m = pool.match(/[/\\]([\w\-\.]+\.\w+)/);
+  if (m) return m[1];
+  return '';
+}
+
+function toolBadgeClassForExt(ext) {
+  var e = (ext || '').toLowerCase();
+  if (e === 'ts' || e === 'tsx' || e === 'mts' || e === 'cts') return 'tool-badge-ts';
+  if (e === 'js' || e === 'jsx' || e === 'mjs' || e === 'cjs') return 'tool-badge-js';
+  if (e === 'html' || e === 'htm') return 'tool-badge-html';
+  if (e === 'css' || e === 'scss') return 'tool-badge-css';
+  if (e === 'json') return 'tool-badge-json';
+  if (e === 'md' || e === 'mdx') return 'tool-badge-md';
+  if (e === 'py') return 'tool-badge-py';
+  return 'tool-badge-generic';
+}
+
+function toolBadgeAbbr(fileName) {
+  if (!fileName) return '<>';
+  var ext = (fileName.split('.').pop() || '').toLowerCase();
+  if (ext === 'html' || ext === 'htm') return '</>';
+  if (ext.length <= 2) return ext.toUpperCase() || '<>';
+  if (ext === 'typescript' || ext === 'ts') return 'TS';
+  return ext.length > 3 ? ext.substring(0, 3).toUpperCase() : ext.toUpperCase();
+}
+
+/** Build Cursor-like tool card DOM (file header + green diff rows). */
+function buildCursorToolCard(m) {
+  var card = document.createElement('div');
+  card.className = 'tool-cursor-card';
+
+  var action = (m.action || '').trim();
+  var details = (m.details || '').trim();
+  var snippet = (m.snippet || '').trim();
+  if (!snippet) snippet = [action, details].filter(Boolean).join('\n\n');
+
+  var fileName = parseToolFileLabel(action, details, snippet);
+  var headerTitle = fileName || action || 'Tool';
+
+  var lineCount = 0;
+  if (snippet) {
+    lineCount = snippet.split(/\r?\n/).length;
+    if (lineCount === 1 && snippet.length > 120) lineCount = Math.max(1, Math.ceil(snippet.length / 80));
+  }
+
+  var header = document.createElement('div');
+  header.className = 'tool-cursor-header';
+
+  var badge = document.createElement('span');
+  var ext = fileName && fileName.indexOf('.') !== -1 ? fileName.split('.').pop() || '' : '';
+  badge.className = 'tool-lang-badge ' + (fileName ? toolBadgeClassForExt(ext) : 'tool-badge-generic');
+  badge.textContent = toolBadgeAbbr(fileName || '');
+
+  var fname = document.createElement('span');
+  fname.className = 'tool-cursor-filename';
+  fname.textContent = headerTitle;
+  fname.title = headerTitle;
+
+  var plus = document.createElement('span');
+  plus.className = 'tool-cursor-plus';
+  plus.textContent = lineCount > 0 ? '+' + lineCount : '';
+
+  header.appendChild(badge);
+  header.appendChild(fname);
+  header.appendChild(plus);
+
+  var body = document.createElement('div');
+  body.className = 'tool-cursor-body';
+
+  if (snippet) {
+    var lines = snippet.split(/\r?\n/);
+    var maxLines = 220;
+    for (var li = 0; li < lines.length && li < maxLines; li++) {
+      var row = document.createElement('div');
+      row.className = 'tool-code-line tool-code-line-add';
+      row.textContent = lines[li];
+      body.appendChild(row);
+    }
+    if (lines.length > maxLines) {
+      var more = document.createElement('div');
+      more.className = 'tool-code-meta';
+      more.textContent = '… +' + (lines.length - maxLines) + ' שורות (נחתך)';
+      body.appendChild(more);
+    }
+  } else {
+    var empty = document.createElement('div');
+    empty.className = 'tool-code-meta';
+    empty.textContent = '(אין תוכן לShowה)';
+    body.appendChild(empty);
+  }
+
+  card.appendChild(header);
+  card.appendChild(body);
+
+  if (m.hasPendingApproval) {
+    var pend = document.createElement('div');
+    pend.className = 'tool-cursor-pending';
+    pend.textContent = 'ממתין לאישור ב-Cursor';
+    card.appendChild(pend);
+  }
+
+  return card;
+}
+
+// ── Incremental rendering ──
+function msgKey(m) {
+  var t = m.text || m.action || m.preview || m.duration || '';
+  if (m.type === 'tool') {
+    t =
+      (m.action || '') +
+      '\n' +
+      (m.details || '') +
+      '\n' +
+      String((m.snippet || '').length) +
+      '\n' +
+      (m.hasPendingApproval ? '1' : '0');
+  }
+  if (m.type === 'thought') {
+    var d = m.detail || '';
+    // Omit full detail text: it changes often (extraction / expand) and would break prefix-match,
+    // forcing DOM rebuilds and losing scroll position while reading older messages.
+    t = (m.summary || '') + '\n' + (m.duration || '') + '\n' + d.length + '\n' + d.substring(0, 96);
+  }
+  // Include canRevert so a transition (e.g. checkpoint control appearing on a
+  // later poll) causes the human-message row to re-render with the button.
+  var revertKey = m.type === 'human' ? (m.canRevert ? '1' : '0') : '';
+  var htmlLen = m.type === 'assistant' && m.html ? String(m.html.length) : '0';
+  return m.type + ':' + m.flatIndex + ':' + t.length + ':' + t.substring(0, 60) + ':' + revertKey + ':' + htmlLen;
+}
+
+function renderMessages(messages) {
+  var el = $msgs;
+  var pinScroll = !autoScroll && el.scrollHeight > el.clientHeight + 8;
+  var savedScrollTop = pinScroll ? el.scrollTop : 0;
+  var historyPrepend =
+    pinScroll &&
+    prevMsgs.length > 0 &&
+    messages.length > prevMsgs.length &&
+    messages[0] &&
+    prevMsgs[0] &&
+    typeof messages[0].flatIndex === 'number' &&
+    typeof prevMsgs[0].flatIndex === 'number' &&
+    messages[0].flatIndex < prevMsgs[0].flatIndex;
+  var savedScrollHeight = historyPrepend ? el.scrollHeight : 0;
+
+  if (optimisticText) {
+    var found = false;
+    for (var fi = messages.length - 1; fi >= 0 && fi >= messages.length - 5; fi--) {
+      if (messages[fi] && messages[fi].type === 'human' && messages[fi].text &&
+          messages[fi].text.indexOf(optimisticText.substring(0, 20)) !== -1) {
+        found = true; break;
+      }
+    }
+    if (found) {
+      optimisticText = null;
+      var oEl = $msgs.querySelector('.optimistic');
+      if (oEl) oEl.remove();
+    }
+  }
+
+  var match = 0;
+  for (var i = 0; i < Math.min(prevMsgs.length, messages.length); i++) {
+    if (msgKey(messages[i]) === msgKey(prevMsgs[i])) { match = i + 1; } else { break; }
+  }
+
+  var optNode = $msgs.querySelector('.optimistic');
+  var hadOptimistic = !!(optimisticText && optNode);
+  if (optNode) optNode.remove();
+
+  if (match === 0) {
+    var frag = document.createDocumentFragment();
+    for (var j0 = 0; j0 < messages.length; j0++) {
+      frag.appendChild(buildMsg(messages[j0]));
+    }
+    if (hadOptimistic && optNode) frag.appendChild(optNode);
+    el.replaceChildren(frag);
+  } else {
+    while ($msgs.children.length > match) {
+      $msgs.lastChild.remove();
+    }
+    for (var j = match; j < messages.length; j++) {
+      $msgs.appendChild(buildMsg(messages[j]));
+    }
+    if (hadOptimistic && optNode) {
+      $msgs.appendChild(optNode);
+    }
+  }
+
+  prevMsgs = messages;
+  updateLoadHistoryBtn();
+  if (pinScroll) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (historyPrepend) {
+          var delta = el.scrollHeight - savedScrollHeight;
+          var target = savedScrollTop + Math.max(0, delta);
+          var maxSt = Math.max(0, el.scrollHeight - el.clientHeight);
+          el.scrollTop = Math.min(target, maxSt);
+        } else {
+          var maxSt2 = Math.max(0, el.scrollHeight - el.clientHeight);
+          el.scrollTop = Math.min(savedScrollTop, maxSt2);
+        }
+      });
+    });
+  }
+  scrollToBottom();
+}
+
+function buildMsg(m) {
+  var div = document.createElement('div');
+  div.className = 'msg ' + m.type;
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+
+  switch (m.type) {
+    case 'human':
+      label.textContent = 'You';
+      div.appendChild(label);
+      var body = document.createElement('div');
+      body.className = 'msg-body';
+      body.textContent = m.text || '';
+      div.appendChild(body);
+      
+      if (m.images && m.images.length > 0) {
+        var imgsDiv = document.createElement('div');
+        imgsDiv.style.display = 'flex';
+        imgsDiv.style.flexWrap = 'wrap';
+        imgsDiv.style.gap = '8px';
+        imgsDiv.style.marginTop = '8px';
+        for(var i=0; i<m.images.length; i++) {
+          var img = document.createElement('img');
+          img.src = m.images[i];
+          img.style.maxHeight = '150px';
+          img.style.maxWidth = '100%';
+          img.style.borderRadius = '8px';
+          imgsDiv.appendChild(img);
+        }
+        div.appendChild(imgsDiv);
+      }
+
+      var hasText = m.text && String(m.text).trim().length > 0;
+      var hasImgs = m.images && m.images.length > 0;
+      var fiOk = typeof m.flatIndex === 'number' && m.flatIndex >= 0;
+      if ((hasText || hasImgs) && (fiOk || m.canRevert === true)) {
+        var actionsDiv = document.createElement('div');
+        actionsDiv.style.display = 'flex';
+        actionsDiv.style.gap = '8px';
+        actionsDiv.style.marginTop = '8px';
+        actionsDiv.style.flexWrap = 'wrap';
+
+        var textSnap = m.text || '';
+        if (fiOk) {
+          var editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.className = 'edit-prompt-btn';
+          editBtn.textContent = '\u05e2\u05e8\u05d9\u05db\u05d4 \u05d1-Cursor';
+          editBtn.title =
+            '\u05e4\u05d5\u05ea\u05d7 \u05d1-Cursor \u05d0\u05ea \u05de\u05e6\u05d1 \u05d4\u05e2\u05e8\u05d9\u05db\u05d4 \u05e9\u05dc \u05d4\u05e4\u05e8\u05d5\u05de\u05e4\u05d8 — \u05d0\u05dd \u05de\u05d5\u05e4\u05d9\u05e2 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2, \u05d1\u05d7\u05e8\u05d5 \u05db\u05d0\u05df \u05d0\u05ea \u05d4\u05d0\u05e4\u05e9\u05e8\u05d5\u05ea (\u05dc\u05de\u05e9\u05dc \u05d4\u05de\u05e9\u05da \u05de\u05db\u05d0\u05df \u05d0\u05d5 \u05d7\u05d6\u05e8\u05d4 \u05dc\u05e0\u05e7\u05d5\u05d3\u05d4 \u05d6\u05d5).';
+          var fi = m.flatIndex;
+          editBtn.onclick = function (e) {
+            e.stopPropagation();
+            doEditMessageInCursor(fi);
+          };
+          actionsDiv.appendChild(editBtn);
+        }
+
+        // Destructive checkpoint restore — only when Cursor exposes the control in the DOM.
+        if (m.canRevert === true && fiOk) {
+          var rbtn = document.createElement('button');
+          rbtn.className = 'revert-btn';
+          rbtn.textContent = 'שחזור checkpoint';
+          rbtn.title = 'Restore Checkpoint ב-Cursor — מוחק הודעות אחרי נקודה זו';
+          var locator = (m.revertTarget && m.revertTarget.locatorKind) || '';
+          var previewText = textSnap.substring(0, 180);
+          rbtn.onclick = function (e) {
+            e.stopPropagation();
+            openRevertSheet(m.flatIndex, locator, previewText);
+          };
+          actionsDiv.appendChild(rbtn);
+        }
+        div.appendChild(actionsDiv);
+      }
+      break;
+    case 'assistant':
+      label.textContent = 'Cursor';
+      div.appendChild(label);
+      var abody = document.createElement('div');
+      abody.className = 'msg-body markdown-rich';
+      abody.innerHTML = renderAssistantBody(m);
+      div.appendChild(abody);
+      break;
+    case 'tool':
+      div.appendChild(buildCursorToolCard(m));
+      break;
+    case 'thought':
+      label.textContent = 'Thinking';
+      label.className = 'msg-label thought-label';
+      div.appendChild(label);
+      var summText = m.summary || m.duration || '…';
+      var detText = (m.detail && String(m.detail).trim()) || '';
+      var detEl = document.createElement('details');
+      detEl.className = 'thought-card';
+      var sumEl = document.createElement('summary');
+      sumEl.className = 'thought-summary-row';
+      var chev = document.createElement('span');
+      chev.className = 'thought-chevron';
+      chev.setAttribute('aria-hidden', 'true');
+      chev.innerHTML =
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>';
+      var sumSpan = document.createElement('span');
+      sumSpan.className = 'thought-summary-text';
+      sumSpan.textContent = summText;
+      sumEl.appendChild(chev);
+      sumEl.appendChild(sumSpan);
+      detEl.appendChild(sumEl);
+      var inner = document.createElement('div');
+      inner.className = 'msg-body markdown-rich thought-inner';
+      if (detText) {
+        inner.innerHTML = safeMarkdownToHtml(detText);
+      } else {
+        inner.className += ' thought-inner-empty';
+        inner.textContent =
+          '\u05dc\u05d0 \u05e0\u05de\u05e9\u05da \u05db\u05d0\u05df \u05d8\u05e7\u05e1\u05d8 \u05d4\u05de\u05d7\u05e9\u05d1\u05d4 \u05de-Cursor (\u05dc\u05e8\u05d5\u05d1 \u05db\u05e9\u05d4\u05d1\u05dc\u05d5\u05e7 \u05de\u05e7\u05d5\u05e4\u05dc). \u05e4\u05ea\u05d7 \u05d0\u05ea Thinking \u05d1\u05d3\u05e1\u05e7\u05d8\u05d5\u05e4 \u05db\u05d3\u05d9 \u05dc\u05e8\u05d0\u05d5\u05ea \u05d0\u05ea \u05d4\u05de\u05dc\u05d0.';
+      }
+      detEl.appendChild(inner);
+      div.appendChild(detEl);
+      break;
+    case 'loading':
+      div.textContent = 'Generating...';
+      break;
+    default:
+      label.textContent = m.type;
+      div.appendChild(label);
+      div.appendChild(document.createTextNode(m.preview || m.text || ''));
+  }
+  return div;
+}
+
+// ── Logout ──
+function logout() {
+  TOKEN = '';
+  localStorage.removeItem('v2_token');
+  $app.style.display = 'none';
+  $login.style.display = 'flex';
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+}
+
+var $offline = $('offline-screen');
+var $startSysBtn = $('start-sys-btn');
+
+function checkRelay(cb) {
+  var done = false;
+  var timer = setTimeout(function() {
+    if (!done) { done = true; cb(false); }
+  }, 1500);
+
+  fetch(BASE + '/health')
+    .then(function(r) { 
+      if (!done) { done = true; clearTimeout(timer); cb(r.ok); }
+    })
+    .catch(function() { 
+      if (!done) { done = true; clearTimeout(timer); cb(false); }
+    });
+}
+
+var relayRestartPollTimer = null;
+
+/** POST supervisor /restart-relay, or POST relay /admin/restart-relay if supervisor is down. */
+function doRestartRelay() {
+  if (relayRestartPollTimer) {
+    clearInterval(relayRestartPollTimer);
+    relayRestartPollTimer = null;
+  }
+  showToast(
+    '\u05de\u05e4\u05e2\u05d9\u05dc \u05de\u05d7\u05d3\u05e9 \u05d0\u05ea \u05d4-relay...',
+    3200,
+  );
+
+  function pollUntilRelayUp() {
+    var attempts = 0;
+    relayRestartPollTimer = setInterval(function () {
+      attempts++;
+      checkRelay(function (ok) {
+        if (ok) {
+          if (relayRestartPollTimer) {
+            clearInterval(relayRestartPollTimer);
+            relayRestartPollTimer = null;
+          }
+          showToast(
+            'Relay \u05d7\u05d6\u05e8 \u2014 \u05de\u05d7\u05d1\u05e8 \u05de\u05d7\u05d3\u05e9',
+            2800,
+          );
+          try {
+            if (ws) ws.close();
+          } catch (e) {}
+          connectWs();
+          loadState();
+        } else if (attempts >= 80) {
+          if (relayRestartPollTimer) {
+            clearInterval(relayRestartPollTimer);
+            relayRestartPollTimer = null;
+          }
+          showToast(
+            '\u05d4-relay \u05e2\u05d3\u05d9\u05d9\u05df \u05dc\u05d0 \u05de\u05d2\u05d9\u05d1 \u2014 \u05d1\u05d3\u05d5\u05e7 \u05d9\u05d3\u05e0\u05d9\u05ea \u05d0\u05d5 \u05d4\u05e4\u05e2\u05dc supervisor / relay',
+            5000,
+          );
+        }
+      });
+    }, 400);
+  }
+
+  fetch(SUPERVISOR_BASE + '/restart-relay', { method: 'POST' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function () {
+      pollUntilRelayUp();
+    })
+    .catch(function () {
+      if (!TOKEN) {
+        showToast(
+          'Supervisor \u05dc\u05d0 \u05d6\u05de\u05d9\u05df (\u05e4\u05d5\u05e8\u05d8 ' +
+            SUPERVISOR_PORT +
+            '). \u05d4\u05ea\u05d7\u05d1\u05e8 \u05de\u05d7\u05d3\u05e9 \u05d0\u05d5 \u05d4\u05e4\u05e2\u05dc: npx tsx v2/supervisor.ts',
+          5500,
+        );
+        return;
+      }
+      showToast(
+        'Supervisor \u05dc\u05d0 \u05d6\u05de\u05d9\u05df \u2014 \u05de\u05e0\u05e1\u05d4 \u05e8\u05d9\u05e2\u05e0\u05d5\u05df \u05d3\u05e8\u05da \u05d4-relay...',
+        2800,
+      );
+      fetch(BASE + '/admin/restart-relay', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + TOKEN },
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function () {
+          pollUntilRelayUp();
+        })
+        .catch(function () {
+          showToast(
+            '\u05e8\u05d9\u05e2\u05e0\u05d5\u05df \u05e0\u05db\u05e9\u05dc. Supervisor: npx tsx v2/supervisor.ts (\u05e4\u05d5\u05e8\u05d8 ' +
+              SUPERVISOR_PORT +
+              ') \u05d0\u05d5 \u05d4\u05e4\u05e2\u05dc \u05d9\u05d3\u05e0\u05d9\u05ea relay \u05d9\u05d3\u05e0\u05d9\u05ea.',
+            6000,
+          );
+        });
+    });
+}
+
+function checkSupervisor() {
+  var done = false;
+  var timer = setTimeout(function() {
+    if (!done) { done = true; showOffline(); }
+  }, 1500);
+
+  fetch(SUPERVISOR_BASE + '/status')
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        if (j) {
+          showOffline();
+        } else {
+          $login.style.display = 'flex';
+        }
+      }
+    })
+    .catch(function() {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        showOffline();
+      }
+    });
+}
+
+function showOffline() {
+  $login.style.display = 'none';
+  $app.style.display = 'none';
+  $offline.style.display = 'flex';
+}
+
+$startSysBtn.addEventListener('click', function() {
+  $startSysBtn.disabled = true;
+  $startSysBtn.textContent = 'Starting... (takes 10-20s)';
+  fetch(SUPERVISOR_BASE + '/start', { method: 'POST' })
+    .then(function() {
+      // Start polling relay
+      var iv = setInterval(function() {
+        checkRelay(function(ok) {
+          if (ok) {
+            clearInterval(iv);
+            location.reload();
+          }
+        });
+      }, 2000);
+    })
+    .catch(function() {
+      $startSysBtn.disabled = false;
+      $startSysBtn.textContent = 'Failed to start. Try again.';
+    });
+});
+
+// ── Boot ──
+(function boot() {
+  checkRelay(function(isUp) {
+    if (isUp) {
+      if (TOKEN) {
+        fetch(BASE + '/state', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function(r) { if (r.ok) { enterApp(); return; } throw new Error(); })
+        .catch(function() { $login.style.display = 'flex'; });
+      } else {
+        $login.style.display = 'flex';
+      }
+    } else {
+      checkSupervisor();
+    }
+  });
+})();
+</script>
+</body>
+</html>

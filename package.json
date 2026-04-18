@@ -1,37 +1,38 @@
 {
-  "name": "cursor-mobile",
+  "name": "cursorbeam",
   "version": "1.0.0",
-  "description": "Control Cursor IDE features from mobile - Agent, Plan Mode, Files, Git, and more",
-  "main": "dist/server/index.js",
+  "description": "⚡ Beam your Cursor IDE to any device - Control Cursor from your phone with a secure, mobile-first PWA",
+  "main": "src/start.ts",
   "type": "module",
   "scripts": {
     "setup": "powershell -ExecutionPolicy Bypass -File setup.ps1",
-    "install": "powershell -ExecutionPolicy Bypass -File install.ps1",
-    "start": "npm run v2:start",
-    "v2:start": "npx tsx v2/start.ts",
-    "v2:relay": "npx tsx v2/relay-server.ts",
+    "installer": "powershell -ExecutionPolicy Bypass -File install.ps1",
+    "start": "npx tsx src/start.ts",
+    "relay": "npx tsx src/relay-server.ts",
     "check": "tsc --noEmit",
-    "dev": "nodemon --watch src --ext ts,js,html,css --exec \"node --loader ts-node/esm src/server/index.ts\"",
-    "build": "tsc -p . && npm run copy-web",
-    "copy-web": "node -e \"import('fs').then(fs => fs.cpSync('src/web', 'dist/web', {recursive: true}))\"",
-    "status": "node -e \"fetch('http://localhost:8765/api/status').then(r=>r.json()).then(console.log).catch(e=>console.error('Server not running'))\"",
-    "host:build": "dotnet build host/CursorChatHost/CursorChatHost.csproj -c Release",
-    "host:run": ".\\host\\CursorChatHost\\bin\\Release\\net8.0\\CursorChatHost.exe",
-    "host:install": "powershell -ExecutionPolicy Bypass -File scripts/install-chat-host.ps1",
-    "v2:poc": "npx tsx v2/cdp-poc.ts",
-    "v2:extract": "npx tsx v2/poc-extract.ts",
-    "v2:inject": "npx tsx v2/poc-inject.ts",
-    "v2:test:edit": "node --import tsx/esm --test-force-exit --test v2/edit-flow.test.ts"
+    "test:edit": "npx tsx src/edit-flow.test.ts"
   },
   "keywords": [
     "cursor",
+    "cursor-ide",
     "mobile",
     "pwa",
-    "agent",
-    "tailscale"
+    "remote-control",
+    "tailscale",
+    "typescript",
+    "chrome-devtools-protocol",
+    "websocket"
   ],
-  "author": "",
+  "author": "Noam Barsheshet",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noambars121/CursorBeam.git"
+  },
+  "bugs": {
+    "url": "https://github.com/noambars121/CursorBeam/issues"
+  },
+  "homepage": "https://github.com/noambars121/CursorBeam#readme",
   "dependencies": {
     "@types/ws": "^8.18.1",
     "bcrypt": "^6.0.0",
