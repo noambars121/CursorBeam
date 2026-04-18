@@ -10,8 +10,8 @@ Control Cursor IDE from your phone — a private PWA with full Agent, Ask, Plan,
 
 ```powershell
 # Clone the repository
-git clone https://github.com/YOUR-USERNAME/cursor-mobile.git
-cd cursor-mobile
+git clone https://github.com/noambars121/CursorBeam.git
+cd CursorBeam
 
 # Run setup (installs dependencies and creates config)
 npm run setup

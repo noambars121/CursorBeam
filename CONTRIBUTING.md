@@ -10,8 +10,8 @@ Thank you for considering contributing! This project welcomes contributions from
 # 1. Fork the repository on GitHub
 
 # 2. Clone your fork
-git clone https://github.com/YOUR-USERNAME/cursor-mobile.git
-cd cursor-mobile
+git clone https://github.com/YOUR-USERNAME/CursorBeam.git
+cd CursorBeam
 
 # 3. Install dependencies
 npm install
@@ -276,8 +276,10 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ## 🙏 Thank You!
 
-Every contribution helps make Cursor Mobile better for everyone.
+Every contribution helps make CursorBeam better for everyone.
 
 **Contributors will be listed in CONTRIBUTORS.md**
+
+**GitHub Repository:** https://github.com/noambars121/CursorBeam
 
 Happy coding! 🚀

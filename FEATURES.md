@@ -453,6 +453,6 @@
 
 ---
 
-**Discover more features as you use Cursor Mobile! 🚀**
+**Discover more features as you use CursorBeam! 🚀**
 
-Have a feature request? [Open an issue!](https://github.com/YOUR-USERNAME/cursor-mobile/issues/new)
+Have a feature request? [Open an issue!](https://github.com/noambars121/CursorBeam/issues/new)

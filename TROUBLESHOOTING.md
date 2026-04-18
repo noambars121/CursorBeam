@@ -638,7 +638,7 @@ powershell -ExecutionPolicy Bypass -File diagnose.ps1
    - העתק את ה-logs מהשרת
 
 2. **פתח Issue ב-GitHub:**
-   - https://github.com/YOUR-USERNAME/cursor-mobile/issues/new
+   - https://github.com/noambars121/CursorBeam/issues/new
    - תאר מה ניסית
    - צרף את המידע שאספת
 

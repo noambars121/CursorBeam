@@ -5,8 +5,8 @@
 ### שלב 1️⃣: הורד את הקבצים
 
 ```powershell
-git clone https://github.com/YOUR-USERNAME/cursor-mobile.git
-cd cursor-mobile
+git clone https://github.com/noambars121/CursorBeam.git
+cd CursorBeam
 ```
 
 ### שלב 2️⃣: הרץ את ההתקנה

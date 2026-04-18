@@ -8,8 +8,8 @@
 │ שלב 1: הורד את הקבצים                              │
 └─────────────────────────────────────────────────────┘
 
-   git clone <REPOSITORY-URL>
-   cd cursor-mobile
+   git clone https://github.com/noambars121/CursorBeam.git
+   cd CursorBeam
 
 
 ┌─────────────────────────────────────────────────────┐
@@ -112,6 +112,6 @@ Android (Chrome):
 
     תודה שבחרת ב-Cursor Mobile! 🎉
     
-    GitHub: <REPOSITORY-URL>
+    GitHub: https://github.com/noambars121/CursorBeam
 
 ═══════════════════════════════════════════════════════
