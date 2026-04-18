@@ -144,8 +144,12 @@ The installer will:
 - ![](https://img.shields.io/badge/-Install_dependencies-informational?style=flat-square)
 - ![](https://img.shields.io/badge/-Generate_secure_password-informational?style=flat-square)
 - ![](https://img.shields.io/badge/-Auto_detect_Cursor-informational?style=flat-square)
+- ![](https://img.shields.io/badge/-Create_Cursor_CDP_shortcut-informational?style=flat-square) ⚡ **Auto-configures Cursor for remote control**
+- ![](https://img.shields.io/badge/-Select_projects_folder-informational?style=flat-square)
 - ![](https://img.shields.io/badge/-Optional_Tailscale_installation-informational?style=flat-square)
 - ![](https://img.shields.io/badge/-Install_as_Windows_Service-informational?style=flat-square) (daemon with auto-start)
+
+> **⚡ IMPORTANT**: After installation, always use the new **"Cursor (CursorBeam)"** shortcut on your desktop. This shortcut enables remote control. Your old Cursor shortcuts won't work with CursorBeam.
 
 #### Option 2: Command Line
 
@@ -159,12 +163,22 @@ npm run setup
 npm start
 ```
 
+### Starting Cursor
+
+⚡ **IMPORTANT**: Always launch Cursor using the **"Cursor (CursorBeam)"** shortcut created on your desktop. This shortcut:
+- Enables Chrome DevTools Protocol (CDP) for remote control
+- Opens your projects folder automatically
+- Allows CursorBeam to communicate with Cursor
+
+> Your old Cursor shortcuts won't work with CursorBeam!
+
 ### Connecting from Mobile
 
-1. **On same WiFi**: `http://YOUR-LOCAL-IP:9800`
-2. **With Tailscale**: `http://YOUR-TAILSCALE-IP:9800`
-3. **Login** with your password
-4. **Install as PWA**: Add to Home Screen
+1. **Start Cursor**: Use the **"Cursor (CursorBeam)"** desktop shortcut
+2. **On same WiFi**: `http://YOUR-LOCAL-IP:9800`
+3. **With Tailscale**: `http://YOUR-TAILSCALE-IP:9800`
+4. **Login** with your password
+5. **Install as PWA**: Add to Home Screen for app-like experience
 
 ---
 

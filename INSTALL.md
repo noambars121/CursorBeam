@@ -103,16 +103,32 @@ V2_POLL_MS=1500
 
 ## 🎯 Usage
 
+### Starting Cursor
+
+⚡ **IMPORTANT**: Always launch Cursor using the **"Cursor (CursorBeam)"** shortcut on your desktop.
+
+This shortcut was automatically created during installation and:
+- ✅ Enables Chrome DevTools Protocol (CDP) for remote control
+- ✅ Opens your projects folder automatically
+- ✅ Allows CursorBeam to communicate with Cursor
+
+> ⚠️ Your old Cursor shortcuts won't work with CursorBeam!
+
 ### Starting the Server
 
+The CursorBeam service runs automatically if you installed it as a Windows Service during setup.
+
+If you need to start manually:
+
 ```powershell
-npm run v2:start
+npm start
 ```
 
 This will:
-1. Launch Cursor with Chrome DevTools enabled
-2. Start the relay server
-3. Show your connection URLs
+1. Start the relay server
+2. Show your connection URLs
+
+> **Note**: Make sure you've launched Cursor using the "Cursor (CursorBeam)" shortcut first!
 
 ### Stopping the Server
 
