@@ -163,22 +163,38 @@ npm run setup
 npm start
 ```
 
-### Starting Cursor
+### How It Works
 
-⚡ **IMPORTANT**: Always launch Cursor using the **"Cursor (CursorBeam)"** shortcut created on your desktop. This shortcut:
-- Enables Chrome DevTools Protocol (CDP) for remote control
-- Opens your projects folder automatically
-- Allows CursorBeam to communicate with Cursor
+CursorBeam consists of two parts:
 
-> Your old Cursor shortcuts won't work with CursorBeam!
+1. **Background Supervisor** (Windows Service on port 9799)
+   - Starts automatically with Windows
+   - Monitors for Cursor launch
+   - Auto-starts relay server when Cursor detected
+   - Keeps relay running in background
 
-### Connecting from Mobile
+2. **Cursor with CDP** (Chrome DevTools Protocol)
+   - You launch via special shortcut
+   - Enables remote control interface
+   - Communicates with relay server
+
+> The installer sets up both automatically!
+
+### Daily Usage
 
 1. **Start Cursor**: Use the **"Cursor (CursorBeam)"** desktop shortcut
-2. **On same WiFi**: `http://YOUR-LOCAL-IP:9800`
-3. **With Tailscale**: `http://YOUR-TAILSCALE-IP:9800`
-4. **Login** with your password
-5. **Install as PWA**: Add to Home Screen for app-like experience
+   - The background service automatically detects it
+   - Relay server starts automatically on port 9800
+
+2. **Connect from Phone**:
+   - **On same WiFi**: `http://YOUR-LOCAL-IP:9800`
+   - **With Tailscale**: `http://YOUR-TAILSCALE-IP:9800`
+   
+3. **Login** with your password
+
+4. **Install as PWA**: Add to Home Screen for app-like experience
+
+> **Note**: Always use the "Cursor (CursorBeam)" shortcut. Your old Cursor shortcuts won't work with CursorBeam!
 
 ---
 

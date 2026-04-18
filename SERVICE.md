@@ -136,9 +136,24 @@ You need to run PowerShell as Administrator:
    Get-Service -Name "CursorBeam" | Select-Object Status, StartType
    ```
 
-3. View error logs:
+3. View error logs in Event Viewer or check the daemon folder
+
+### Relay not starting when I launch Cursor
+
+1. Make sure you're using the **"Cursor (CursorBeam)"** shortcut (not regular Cursor shortcuts)
+
+2. Check if supervisor is running:
    ```powershell
-   Get-EventLog -LogName Application -Source "CursorBeam" -Newest 10
+   Get-Service -Name "CursorBeam"
+   ```
+
+3. Check supervisor status:
+   - Open browser: `http://localhost:9799/status`
+   - Should show: `{"isCursorRunning":true, "isRelayRunning":true}`
+
+4. Manually trigger relay start from phone or browser:
+   ```powershell
+   curl -X POST http://localhost:9799/restart-relay
    ```
 
 ### Service keeps stopping
