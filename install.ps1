@@ -51,58 +51,57 @@ function Test-TailscaleInstalled {
 }
 
 function Install-Tailscale {
-    Write-Log "Downloading Tailscale..." "INFO"
-    
-    $installerUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe"
-    $installerPath = "$env:TEMP\tailscale-setup.exe"
+    Write-Log "Opening Tailscale download page..." "INFO"
     
     try {
-        # Download with progress
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing -ErrorAction Stop
-        $ProgressPreference = 'Continue'
+        # Open the official Tailscale download page in browser
+        Start-Process "https://tailscale.com/download/windows"
         
-        Write-Log "Tailscale downloaded successfully" "SUCCESS"
-        Write-Log "Launching Tailscale installer (requires admin)..." "INFO"
+        # Show clear instructions
+        $message = @"
+Tailscale download page is now opening in your browser.
+
+IMPORTANT - FOLLOW THESE STEPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Download and run the Tailscale installer from browser
+2. Complete the Tailscale installation (it's quick!)
+3. Click 'Log in' in Tailscale and authenticate
+4. Come back here and click OK when done
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After installing:
+• Tailscale icon will appear in system tray (near clock)
+• You can check your IP with: tailscale ip -4
+• Install Tailscale on your phone with same account
+
+Click OK when you've finished installing Tailscale
+(or Cancel to skip for now)
+"@
         
-        # Run installer with elevated privileges and interactive mode (not /quiet)
-        # This allows the installer to request admin rights properly
-        $process = Start-Process -FilePath $installerPath `
-                                  -ArgumentList "/install","/norestart" `
-                                  -Verb RunAs `
-                                  -Wait `
-                                  -PassThru `
-                                  -ErrorAction Stop
+        $result = Show-MessageBox $message "Install Tailscale" -Buttons OKCancel -Icon Information
         
-        if ($process.ExitCode -eq 0) {
-            Write-Log "Tailscale installed successfully!" "SUCCESS"
-            
-            # Wait for service to start
-            Start-Sleep -Seconds 5
-            
-            # Refresh environment variables
+        if ($result -eq "OK") {
+            # Give it a moment and refresh PATH
+            Start-Sleep -Seconds 2
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             
-            return $true
-        } elseif ($process.ExitCode -eq 1602) {
-            # User cancelled the installation
-            Write-Log "Tailscale installation cancelled by user" "WARNING"
-            return $false
+            # Check if Tailscale is now installed
+            if (Test-TailscaleInstalled) {
+                Write-Log "Tailscale detected successfully!" "SUCCESS"
+                return $true
+            } else {
+                Write-Log "Tailscale not found in PATH yet" "WARNING"
+                $restartMsg = Show-MessageBox "Tailscale may be installed but not in PATH yet.`n`nYou may need to restart your computer.`n`nContinue anyway?" "Restart May Be Required" -Buttons YesNo -Icon Question
+                return ($restartMsg -eq "Yes")
+            }
         } else {
-            Write-Log "Tailscale installer exit code: $($process.ExitCode)" "WARNING"
+            Write-Log "User chose to skip Tailscale" "INFO"
             return $false
         }
     } catch {
-        Write-Log "Error installing Tailscale: $($_.Exception.Message)" "ERROR"
-        
-        # If the file was downloaded successfully, offer to open it manually
-        if (Test-Path $installerPath) {
-            Write-Host ""
-            Write-Host "The installer was downloaded to: $installerPath" -ForegroundColor Yellow
-            Write-Host "You can run it manually after this setup completes." -ForegroundColor Yellow
-            Write-Host ""
-        }
-        
+        Write-Log "Error opening Tailscale page: $($_.Exception.Message)" "ERROR"
         return $false
     }
 }
