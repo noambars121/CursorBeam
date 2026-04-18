@@ -714,24 +714,28 @@ $serviceInstalled = $script:EnableAutostart
 $completionMessage = @"
 ✓ CursorBeam has been installed successfully!
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HOW IT WORKS (Super Simple!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 "@
 
 if ($serviceInstalled) {
     $completionMessage += @"
-🔷 WINDOWS SERVICE STATUS:
-   The server is now running as a Windows Service (daemon)
-   • Starts automatically on boot
-   • Runs in background
-   • Auto-restarts if it crashes
+✅ BACKGROUND SERVICE (Always Running)
+   → Supervisor service is now active
+   → Automatically detects when you start Cursor
+   → Auto-starts relay server for your phone
+   → No manual startup needed!
 
-   To manage: Win+R → services.msc → Find "CursorBeam"
+   Manage: Win+R → services.msc → "CursorBeam"
 
 "@
 } else {
     $completionMessage += @"
-📝 TO START THE SERVER:
-   • Double-click 'start.bat', OR
-   • Run 'npm start' in this folder
+📝 MANUAL START REQUIRED:
+   → Run 'npm start' in this folder
+   → Or double-click 'start.bat'
 
 "@
 }
@@ -757,22 +761,41 @@ $completionMessage += @"
 
 2. Login with your password
 
-⚡ IMPORTANT - USE THE NEW SHORTCUT:
-• Look for "Cursor (CursorBeam)" on your desktop
-• Always use this shortcut (enables remote control!)
-• Your old Cursor shortcuts won't work with CursorBeam
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DAILY USAGE (3 Easy Steps)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  Launch Cursor:
+    → Use "Cursor (CursorBeam)" shortcut on your desktop
+    → (Service automatically starts relay in background)
+
+2️⃣  Open on Phone:
+    → Same WiFi: http://$localIp:9800
+$(if ($tailscaleIp) { "    → Tailscale: http://$tailscaleIp:9800" })
+
+3️⃣  Login & Control!
+    → Enter your password
+    → Add to home screen (optional)
+    → Control Cursor from anywhere!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  IMPORTANT:
+    Always use "Cursor (CursorBeam)" desktop shortcut
+    Your old Cursor shortcuts won't work with CursorBeam!
 
 💡 TIPS:
-• Add the PWA to your phone's home screen (works like an app!)
-• Need help? Check README.md and SERVICE.md
-• To uninstall service: npm run service:uninstall
+    • PWA works like a native app when added to home screen
+    • If relay doesn't start, tap "Start Relay" in the PWA
+    • Help: README.md & SERVICE.md
+    • Uninstall: npm run service:uninstall
 
 "@
 
 if (-not $serviceInstalled) {
-    $completionMessage += "Would you like to start the server now?"
+    $completionMessage += "`nWould you like to start the server now?"
 } else {
-    $completionMessage += "The service is already running. Ready to connect!"
+    $completionMessage += "`n✅ Service is running! You're ready to go!"
 }
 
 Write-Host $completionMessage

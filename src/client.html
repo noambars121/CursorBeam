@@ -1169,10 +1169,45 @@ button:active:not(:disabled) {
 <body>
 
 <div id="offline-screen" style="display:none;align-items:center;justify-content:center;height:100%;padding:20px;text-align:center;flex-direction:column">
-  <div style="width:100%;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px">
-    <h1 style="font-size:18px;margin-bottom:8px">System Offline</h1>
-    <p style="color:var(--dim);font-size:13px;margin-bottom:20px">The Cursor Remote relay is not running.</p>
-    <button id="start-sys-btn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent">Start System</button>
+  <div style="width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px">
+    <!-- Status Icon -->
+    <div style="width:64px;height:64px;margin:0 auto 20px;background:var(--surface-elevated);border-radius:50%;display:flex;align-items:center;justify-content:center">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+    </div>
+    
+    <!-- Title & Status -->
+    <h1 style="font-size:22px;margin-bottom:8px;font-weight:700">CursorBeam Status</h1>
+    <p id="offline-status-text" style="color:var(--text-tertiary);font-size:15px;margin-bottom:24px;line-height:1.5">Checking connection...</p>
+    
+    <!-- Status Details -->
+    <div id="status-details" style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:24px;text-align:left;display:none">
+      <div style="display:flex;align-items:center;margin-bottom:12px">
+        <span id="supervisor-indicator" style="width:8px;height:8px;border-radius:50%;background:var(--text-tertiary);margin-right:10px"></span>
+        <span style="font-size:14px;color:var(--text-secondary)">Supervisor (background service)</span>
+      </div>
+      <div style="display:flex;align-items:center">
+        <span id="relay-indicator" style="width:8px;height:8px;border-radius:50%;background:var(--text-tertiary);margin-right:10px"></span>
+        <span style="font-size:14px;color:var(--text-secondary)">Relay server (Cursor connection)</span>
+      </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <button id="start-relay-btn" style="width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px;display:none">Start Relay</button>
+    <button id="start-sys-btn" style="width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;display:none">Start Full System</button>
+    
+    <!-- Instructions -->
+    <div id="offline-instructions" style="margin-top:20px;padding:16px;background:var(--bg);border-radius:12px;text-align:left;font-size:13px;color:var(--text-tertiary);line-height:1.6;display:none">
+      <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px">💡 Quick Start:</div>
+      <div style="margin-bottom:6px">1. Make sure Cursor is running</div>
+      <div style="margin-bottom:6px">2. Use the <strong style="color:var(--text-secondary)">"Cursor (CursorBeam)"</strong> shortcut</div>
+      <div>3. Tap "Start Relay" above</div>
+    </div>
+    
+    <!-- Retry Button -->
+    <button id="retry-check-btn" style="width:100%;padding:12px;background:var(--surface-elevated);color:var(--text-secondary);border:none;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;margin-top:12px;display:none">Check Again</button>
   </div>
 </div>
 
@@ -4270,6 +4305,13 @@ function logout() {
 
 var $offline = $('offline-screen');
 var $startSysBtn = $('start-sys-btn');
+var $startRelayBtn = $('start-relay-btn');
+var $retryCheckBtn = $('retry-check-btn');
+var $offlineStatusText = $('offline-status-text');
+var $statusDetails = $('status-details');
+var $offlineInstructions = $('offline-instructions');
+var $supervisorIndicator = $('supervisor-indicator');
+var $relayIndicator = $('relay-indicator');
 
 function checkRelay(cb) {
   var done = false;
@@ -4278,12 +4320,41 @@ function checkRelay(cb) {
   }, 1500);
 
   fetch(BASE + '/health')
-    .then(function(r) { 
+    .then(function(r) {
       if (!done) { done = true; clearTimeout(timer); cb(r.ok); }
     })
-    .catch(function() { 
+    .catch(function() {
       if (!done) { done = true; clearTimeout(timer); cb(false); }
     });
+}
+
+function checkSystemStatus(cb) {
+  var status = { supervisor: false, relay: false };
+  var checks = 0;
+  
+  function done() {
+    checks++;
+    if (checks === 2) cb(status);
+  }
+  
+  // Check supervisor
+  fetch(SUPERVISOR_BASE + '/status', { signal: AbortSignal.timeout(2000) })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      status.supervisor = true;
+      status.relay = data.isRelayRunning;
+      status.cursor = data.isCursorRunning;
+      done();
+    })
+    .catch(function() { done(); });
+  
+  // Check relay directly
+  fetch(BASE + '/health', { signal: AbortSignal.timeout(2000) })
+    .then(function(r) {
+      if (r.ok) status.relay = true;
+      done();
+    })
+    .catch(function() { done(); });
 }
 
 var relayRestartPollTimer = null;
@@ -4408,27 +4479,116 @@ function showOffline() {
   $login.style.display = 'none';
   $app.style.display = 'none';
   $offline.style.display = 'flex';
+  
+  // Check system status and update UI
+  $offlineStatusText.textContent = 'Checking connection...';
+  $statusDetails.style.display = 'none';
+  $startSysBtn.style.display = 'none';
+  $startRelayBtn.style.display = 'none';
+  $offlineInstructions.style.display = 'none';
+  $retryCheckBtn.style.display = 'none';
+  
+  checkSystemStatus(function(status) {
+    $statusDetails.style.display = 'block';
+    $retryCheckBtn.style.display = 'block';
+    
+    // Update indicators
+    $supervisorIndicator.style.background = status.supervisor ? 'var(--green)' : 'var(--red)';
+    $relayIndicator.style.background = status.relay ? 'var(--green)' : 'var(--red)';
+    
+    if (status.relay) {
+      // Relay is running, try to connect
+      $offlineStatusText.textContent = 'Relay is running! Reconnecting...';
+      setTimeout(function() { location.reload(); }, 1500);
+    } else if (status.supervisor && status.cursor) {
+      // Supervisor running, Cursor detected, just start relay
+      $offlineStatusText.textContent = 'Ready to start relay';
+      $startRelayBtn.style.display = 'block';
+      $offlineInstructions.style.display = 'none';
+    } else if (status.supervisor) {
+      // Supervisor running but no Cursor
+      $offlineStatusText.textContent = 'Waiting for Cursor';
+      $offlineInstructions.style.display = 'block';
+      $startRelayBtn.style.display = 'block';
+      $startRelayBtn.disabled = true;
+      $startRelayBtn.textContent = 'Launch Cursor First';
+    } else {
+      // Supervisor not running
+      $offlineStatusText.textContent = 'System not running';
+      $startSysBtn.style.display = 'block';
+      var helpText = 'The background service is not running. Make sure CursorBeam is installed as a Windows Service, or start the supervisor manually.';
+      $offlineInstructions.innerHTML = '<div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px">⚠️ Service Not Found</div><div>' + helpText + '</div>';
+      $offlineInstructions.style.display = 'block';
+    }
+  });
 }
 
-$startSysBtn.addEventListener('click', function() {
-  $startSysBtn.disabled = true;
-  $startSysBtn.textContent = 'Starting... (takes 10-20s)';
-  fetch(SUPERVISOR_BASE + '/start', { method: 'POST' })
+$startRelayBtn.addEventListener('click', function() {
+  $startRelayBtn.disabled = true;
+  $startRelayBtn.textContent = 'Starting relay...';
+  $offlineStatusText.textContent = 'Starting relay server...';
+  
+  fetch(SUPERVISOR_BASE + '/restart-relay', { method: 'POST' })
     .then(function() {
-      // Start polling relay
+      // Poll for relay
+      var checks = 0;
       var iv = setInterval(function() {
+        checks++;
         checkRelay(function(ok) {
           if (ok) {
             clearInterval(iv);
-            location.reload();
+            $offlineStatusText.textContent = 'Connected! Loading...';
+            setTimeout(function() { location.reload(); }, 500);
+          } else if (checks > 15) {
+            clearInterval(iv);
+            $startRelayBtn.disabled = false;
+            $startRelayBtn.textContent = 'Start Relay';
+            $offlineStatusText.textContent = 'Failed to start. Try again.';
+          }
+        });
+      }, 2000);
+    })
+    .catch(function() {
+      $startRelayBtn.disabled = false;
+      $startRelayBtn.textContent = 'Start Relay';
+      $offlineStatusText.textContent = 'Failed to connect. Check supervisor.';
+    });
+});
+
+$startSysBtn.addEventListener('click', function() {
+  $startSysBtn.disabled = true;
+  $startSysBtn.textContent = 'Starting system...';
+  $offlineStatusText.textContent = 'Starting full system (takes 10-20s)...';
+  
+  fetch(SUPERVISOR_BASE + '/start', { method: 'POST' })
+    .then(function() {
+      // Start polling relay
+      var checks = 0;
+      var iv = setInterval(function() {
+        checks++;
+        checkRelay(function(ok) {
+          if (ok) {
+            clearInterval(iv);
+            $offlineStatusText.textContent = 'System started! Loading...';
+            setTimeout(function() { location.reload(); }, 500);
+          } else if (checks > 20) {
+            clearInterval(iv);
+            $startSysBtn.disabled = false;
+            $startSysBtn.textContent = 'Start Full System';
+            $offlineStatusText.textContent = 'Timeout. Check if Cursor started.';
           }
         });
       }, 2000);
     })
     .catch(function() {
       $startSysBtn.disabled = false;
-      $startSysBtn.textContent = 'Failed to start. Try again.';
+      $startSysBtn.textContent = 'Start Full System';
+      $offlineStatusText.textContent = 'Failed to start. Check service status.';
     });
+});
+
+$retryCheckBtn.addEventListener('click', function() {
+  showOffline();
 });
 
 // ── Boot ──
