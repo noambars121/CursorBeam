@@ -126,6 +126,53 @@ function Find-CursorPath {
     return $null
 }
 
+function Create-CursorShortcut {
+    param(
+        [string]$CursorExePath,
+        [string]$ProjectsRoot
+    )
+    
+    Write-Log "Creating Cursor CDP shortcut..." "INFO"
+    
+    try {
+        $WScriptShell = New-Object -ComObject WScript.Shell
+        $desktopPath = [Environment]::GetFolderPath("Desktop")
+        $shortcutPath = Join-Path $desktopPath "Cursor (CursorBeam).lnk"
+        
+        # Delete existing shortcut if exists
+        if (Test-Path $shortcutPath) {
+            Remove-Item $shortcutPath -Force
+        }
+        
+        $shortcut = $WScriptShell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = $CursorExePath
+        
+        # Add CDP flag for remote debugging
+        if ($ProjectsRoot -and (Test-Path $ProjectsRoot)) {
+            $shortcut.Arguments = "--remote-debugging-port=9222 `"$ProjectsRoot`""
+            $shortcut.WorkingDirectory = $ProjectsRoot
+        } else {
+            $shortcut.Arguments = "--remote-debugging-port=9222"
+            $shortcut.WorkingDirectory = [Environment]::GetFolderPath("UserProfile")
+        }
+        
+        $shortcut.Description = "Cursor IDE with CursorBeam remote control enabled"
+        $shortcut.IconLocation = $CursorExePath
+        $shortcut.Save()
+        
+        Write-Log "Cursor shortcut created on desktop ✓" "SUCCESS"
+        Write-Host ""
+        Write-Host "⚡ IMPORTANT: Use the new 'Cursor (CursorBeam)' shortcut on your desktop!" -ForegroundColor Yellow
+        Write-Host "   This shortcut enables remote control from your phone." -ForegroundColor Yellow
+        Write-Host ""
+        
+        return $true
+    } catch {
+        Write-Log "Error creating shortcut: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
 function Install-WindowsService {
     param([string]$ProjectPath)
     
@@ -175,7 +222,7 @@ npm start
 function Show-SetupForm {
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "CursorBeam Setup"
-    $form.Size = New-Object System.Drawing.Size(600, 650)
+    $form.Size = New-Object System.Drawing.Size(600, 760)
     $form.StartPosition = "CenterScreen"
     $form.FormBorderStyle = "FixedDialog"
     $form.MaximizeBox = $false
@@ -316,6 +363,66 @@ function Show-SetupForm {
     $y += 45
 
     # Autostart option (Windows Service)
+    # Projects folder selection
+    $projectsLabel = New-Object System.Windows.Forms.Label
+    $projectsLabel.Text = "Your Projects Folder (optional):"
+    $projectsLabel.Location = New-Object System.Drawing.Point(40, $y)
+    $projectsLabel.Size = New-Object System.Drawing.Size(520, 25)
+    $projectsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+    $form.Controls.Add($projectsLabel)
+
+    $y += 30
+
+    $projectsBox = New-Object System.Windows.Forms.TextBox
+    $projectsBox.Location = New-Object System.Drawing.Point(40, $y)
+    $projectsBox.Size = New-Object System.Drawing.Size(420, 25)
+    $projectsBox.Font = New-Object System.Drawing.Font("Consolas", 10)
+    
+    # Try to auto-detect common project folders
+    $commonProjectPaths = @(
+        "$env:USERPROFILE\projects",
+        "$env:USERPROFILE\Documents\projects",
+        "$env:USERPROFILE\dev",
+        "$env:USERPROFILE\code"
+    )
+    foreach ($path in $commonProjectPaths) {
+        if (Test-Path $path) {
+            $projectsBox.Text = $path
+            break
+        }
+    }
+    
+    $form.Controls.Add($projectsBox)
+
+    $projectsBrowseBtn = New-Object System.Windows.Forms.Button
+    $projectsBrowseBtn.Text = "Browse..."
+    $projectsBrowseBtn.Location = New-Object System.Drawing.Point(470, $y)
+    $projectsBrowseBtn.Size = New-Object System.Drawing.Size(90, 25)
+    $projectsBrowseBtn.Add_Click({
+        $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderBrowser.Description = "Select your projects folder"
+        $folderBrowser.ShowNewFolderButton = $true
+        if ($projectsBox.Text) {
+            $folderBrowser.SelectedPath = $projectsBox.Text
+        }
+        if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $projectsBox.Text = $folderBrowser.SelectedPath
+        }
+    })
+    $form.Controls.Add($projectsBrowseBtn)
+
+    $y += 30
+
+    $projectsInfo = New-Object System.Windows.Forms.Label
+    $projectsInfo.Text = "Cursor will open in this folder. Leave empty to use default location."
+    $projectsInfo.Location = New-Object System.Drawing.Point(40, $y)
+    $projectsInfo.Size = New-Object System.Drawing.Size(520, 20)
+    $projectsInfo.ForeColor = [System.Drawing.Color]::Gray
+    $projectsInfo.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $form.Controls.Add($projectsInfo)
+
+    $y += 35
+
     $autostartCheck = New-Object System.Windows.Forms.CheckBox
     $autostartCheck.Text = "Install as Windows Service (recommended)"
     $autostartCheck.Location = New-Object System.Drawing.Point(40, $y)
@@ -384,6 +491,7 @@ function Show-SetupForm {
         # Store values
         $script:Password = $passBox.Text
         $script:CursorPath = $cursorBox.Text
+        $script:ProjectsRoot = $projectsBox.Text
         $script:InstallTailscale = $tailscaleCheck.Checked
         $script:EnableAutostart = $autostartCheck.Checked
         
@@ -466,9 +574,27 @@ PORT=9800
 CDP_PORT=9222
 "@
 
+# Add projects root if specified
+if ($script:ProjectsRoot -and (Test-Path $script:ProjectsRoot)) {
+    $envContent += "`nPROJECTS_ROOT=$($script:ProjectsRoot)"
+}
+
 $envPath = Join-Path $projectPath ".env"
 Set-Content -Path $envPath -Value $envContent -Encoding UTF8
 Write-Log "Configuration file created ✓" "SUCCESS"
+
+# Create Cursor shortcut with CDP enabled
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "  Creating Cursor Shortcut" -ForegroundColor White
+Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host ""
+
+$shortcutResult = Create-CursorShortcut -CursorExePath $script:CursorPath -ProjectsRoot $script:ProjectsRoot
+
+if (-not $shortcutResult) {
+    Write-Log "Warning: Could not create desktop shortcut" "WARNING"
+}
 
 # Install Tailscale if requested
 if ($script:InstallTailscale) {
@@ -477,21 +603,23 @@ if ($script:InstallTailscale) {
     } else {
         Write-Host ""
         Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
-        Write-Host "  Installing Tailscale" -ForegroundColor White
+        Write-Host "  Setting up Tailscale" -ForegroundColor White
         Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
         Write-Host ""
-        Write-Host "The Tailscale installer window will open." -ForegroundColor Yellow
-        Write-Host "Please follow the on-screen prompts." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "Click 'Yes' when prompted for administrator access." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "Press any key when ready to continue..." -ForegroundColor Gray
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         
         $tsResult = Install-Tailscale
         
         if ($tsResult) {
-            Write-Log "Tailscale installed successfully ✓" "SUCCESS"
+            Write-Host ""
+            Write-Host "✓ Tailscale setup complete!" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "NEXT STEPS:" -ForegroundColor Cyan
+            Write-Host "  1. Find Tailscale icon in system tray (near clock)" -ForegroundColor White
+            Write-Host "  2. Click it and select 'Log in'" -ForegroundColor White
+            Write-Host "  3. Authenticate with Google/Microsoft/GitHub" -ForegroundColor White
+            Write-Host "  4. Install Tailscale on your phone (same account!)" -ForegroundColor White
+            Write-Host ""
+            Write-Log "Tailscale setup completed ✓" "SUCCESS"
             Write-Host ""
             Show-MessageBox "Tailscale installed successfully!`n`nNext steps:`n`n1. Open Tailscale from system tray (near clock)`n2. Click 'Log in' and authenticate`n3. Install Tailscale on your phone (same account)`n`nThen you can access CursorBeam from anywhere!" "Tailscale Setup" -Icon Information
         } else {
@@ -628,6 +756,11 @@ $completionMessage += @"
 
 
 2. Login with your password
+
+⚡ IMPORTANT - USE THE NEW SHORTCUT:
+• Look for "Cursor (CursorBeam)" on your desktop
+• Always use this shortcut (enables remote control!)
+• Your old Cursor shortcuts won't work with CursorBeam
 
 💡 TIPS:
 • Add the PWA to your phone's home screen (works like an app!)
