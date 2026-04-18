@@ -1,4 +1,4 @@
-# Cursor Mobile Installer
+﻿# Cursor Mobile Installer
 # Complete setup with GUI, Tailscale installation, and autostart configuration
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -51,19 +51,19 @@ function Test-TailscaleInstalled {
 }
 
 function Install-Tailscale {
-    Write-Log "מוריד את Tailscale..." "INFO"
+    Write-Log "Downloading Tailscale..." "INFO"
     
     $installerUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe"
     $installerPath = "$env:TEMP\tailscale-setup.exe"
     
     try {
         Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
-        Write-Log "מתקין את Tailscale..." "INFO"
+        Write-Log "Installing Tailscale..." "INFO"
         Start-Process -FilePath $installerPath -ArgumentList "/quiet" -Wait
-        Write-Log "Tailscale הותקן בהצלחה!" "SUCCESS"
+        Write-Log "Tailscale installed successfully!" "SUCCESS"
         return $true
     } catch {
-        Write-Log "שגיאה בהתקנת Tailscale: $_" "ERROR"
+        Write-Log "Error בהתקנת Tailscale: $_" "ERROR"
         return $false
     }
 }
@@ -102,7 +102,7 @@ function Create-AutostartShortcut {
     $shortcut.Description = "Cursor Mobile Server"
     $shortcut.Save()
     
-    Write-Log "Autostart נוצר בהצלחה" "SUCCESS"
+    Write-Log "Autostart created successfully" "SUCCESS"
 }
 
 function Create-HiddenStartScript {
@@ -133,7 +133,7 @@ $psi.CreateNoWindow = $true
 
 function Show-SetupForm {
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "התקנת Cursor Mobile"
+    $form.Text = "CursorBeam Setup"
     $form.Size = New-Object System.Drawing.Size(600, 700)
     $form.StartPosition = "CenterScreen"
     $form.FormBorderStyle = "FixedDialog"
@@ -144,7 +144,7 @@ function Show-SetupForm {
 
     # Title
     $titleLabel = New-Object System.Windows.Forms.Label
-    $titleLabel.Text = "ברוך הבא להתקנת Cursor Mobile"
+    $titleLabel.Text = "ברוך הבא לCursorBeam Setup"
     $titleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
     $titleLabel.Location = New-Object System.Drawing.Point(20, 20)
     $titleLabel.Size = New-Object System.Drawing.Size(560, 40)
@@ -153,7 +153,7 @@ function Show-SetupForm {
 
     # Description
     $descLabel = New-Object System.Windows.Forms.Label
-    $descLabel.Text = "שלוט ב-Cursor IDE שלך מכל מכשיר בעזרת PWA פרטי ומאובטח"
+    $descLabel.Text = "Control your Cursor IDE from any device with a secure, private PWA"
     $descLabel.Location = New-Object System.Drawing.Point(20, 70)
     $descLabel.Size = New-Object System.Drawing.Size(560, 30)
     $descLabel.TextAlign = "MiddleCenter"
@@ -164,7 +164,7 @@ function Show-SetupForm {
 
     # Password section
     $passLabel = New-Object System.Windows.Forms.Label
-    $passLabel.Text = "בחר סיסמה להתחברות מהטלפון:"
+    $passLabel.Text = "Choose password for phone login:"
     $passLabel.Location = New-Object System.Drawing.Point(400, $y)
     $passLabel.Size = New-Object System.Drawing.Size(180, 25)
     $form.Controls.Add($passLabel)
@@ -178,7 +178,7 @@ function Show-SetupForm {
     $y += 35
 
     $passHintLabel = New-Object System.Windows.Forms.Label
-    $passHintLabel.Text = "מומלץ 12 תווים לפחות עם אותיות ומספרים"
+    $passHintLabel.Text = "Recommended: 12+ chars with letters and numbers"
     $passHintLabel.Location = New-Object System.Drawing.Point(40, $y)
     $passHintLabel.Size = New-Object System.Drawing.Size(540, 20)
     $passHintLabel.ForeColor = [System.Drawing.Color]::Gray
@@ -188,14 +188,14 @@ function Show-SetupForm {
     $y += 30
 
     $generateBtn = New-Object System.Windows.Forms.Button
-    $generateBtn.Text = "צור סיסמה חזקה אוטומטית"
+    $generateBtn.Text = "Generate Strong Password"
     $generateBtn.Location = New-Object System.Drawing.Point(400, $y)
     $generateBtn.Size = New-Object System.Drawing.Size(180, 30)
     $generateBtn.Add_Click({
         $randomPass = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 16 | ForEach-Object {[char]$_})
         $passBox.Text = $randomPass
         $passBox.UseSystemPasswordChar = $false
-        Show-MessageBox "סיסמה נוצרה!`n`nהקפד לשמור אותה: $randomPass" "סיסמה חדשה" -Icon Information
+        Show-MessageBox "Password generated!`n`nMake sure to save it: $randomPass" "New Password" -Icon Information
     })
     $form.Controls.Add($generateBtn)
 
@@ -203,7 +203,7 @@ function Show-SetupForm {
 
     # Cursor path section
     $cursorLabel = New-Object System.Windows.Forms.Label
-    $cursorLabel.Text = "מיקום Cursor.exe:"
+    $cursorLabel.Text = "Cursor.exe Location:"
     $cursorLabel.Location = New-Object System.Drawing.Point(480, $y)
     $cursorLabel.Size = New-Object System.Drawing.Size(100, 25)
     $form.Controls.Add($cursorLabel)
@@ -217,13 +217,13 @@ function Show-SetupForm {
     $y += 35
 
     $browseBtn = New-Object System.Windows.Forms.Button
-    $browseBtn.Text = "עיון..."
+    $browseBtn.Text = "Browse..."
     $browseBtn.Location = New-Object System.Drawing.Point(480, $y)
     $browseBtn.Size = New-Object System.Drawing.Size(100, 30)
     $browseBtn.Add_Click({
         $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
         $openFileDialog.Filter = "Cursor (*.exe)|*.exe"
-        $openFileDialog.Title = "בחר את Cursor.exe"
+        $openFileDialog.Title = "Select Cursor.exe"
         if ($openFileDialog.ShowDialog() -eq "OK") {
             $cursorBox.Text = $openFileDialog.FileName
         }
@@ -243,7 +243,7 @@ function Show-SetupForm {
     $y += 35
 
     $tailscaleInfo = New-Object System.Windows.Forms.Label
-    $tailscaleInfo.Text = "Tailscale מאפשר חיבור מאובטח מכל מקום בעולם ללא פתיחת פורטים.`nמומלץ מאוד!"
+    $tailscaleInfo.Text = "Tailscale מאפשר חיבור מאובטח מכל מקום בעולם ללא פתיחת פורטים.`nHighly recommended!"
     $tailscaleInfo.Location = New-Object System.Drawing.Point(40, $y)
     $tailscaleInfo.Size = New-Object System.Drawing.Size(540, 40)
     $tailscaleInfo.ForeColor = [System.Drawing.Color]::DarkBlue
@@ -254,7 +254,7 @@ function Show-SetupForm {
 
     # Autostart section
     $autostartCheck = New-Object System.Windows.Forms.CheckBox
-    $autostartCheck.Text = "הפעל אוטומטית עם Windows"
+    $autostartCheck.Text = "Start automatically with Windows"
     $autostartCheck.Location = New-Object System.Drawing.Point(380, $y)
     $autostartCheck.Size = New-Object System.Drawing.Size(200, 30)
     $autostartCheck.Checked = $true
@@ -263,7 +263,7 @@ function Show-SetupForm {
     $y += 35
 
     $autostartInfo = New-Object System.Windows.Forms.Label
-    $autostartInfo.Text = "השרת יתחיל אוטומטית ברקע כשאתה מדליק את המחשב"
+    $autostartInfo.Text = "The server will start automatically in the background when you boot"
     $autostartInfo.Location = New-Object System.Drawing.Point(40, $y)
     $autostartInfo.Size = New-Object System.Drawing.Size(540, 20)
     $autostartInfo.ForeColor = [System.Drawing.Color]::Gray
@@ -285,7 +285,7 @@ function Show-SetupForm {
 
     # Install button
     $installBtn = New-Object System.Windows.Forms.Button
-    $installBtn.Text = "התקן עכשיו"
+    $installBtn.Text = "Install Now"
     $installBtn.Location = New-Object System.Drawing.Point(220, $y)
     $installBtn.Size = New-Object System.Drawing.Size(160, 45)
     $installBtn.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
@@ -296,23 +296,23 @@ function Show-SetupForm {
     $installBtn.Add_Click({
         # Validation
         if ([string]::IsNullOrWhiteSpace($passBox.Text)) {
-            Show-MessageBox "אנא הזן סיסמה או צור סיסמה אוטומטית" "שגיאה" -Icon Warning
+            Show-MessageBox "Please enter a password or generate one" "Error" -Icon Warning
             return
         }
         
         if ($passBox.Text.Length -lt 8) {
-            $result = Show-MessageBox "הסיסמה קצרה מדי (פחות מ-8 תווים).`nהאם להמשיך בכל זאת?" "אזהרה" -Buttons YesNo -Icon Warning
+            $result = Show-MessageBox "הסיסמה קצרה מדי (פחות מ-8 תווים).`nהאם להמשיך בכל זאת?" "Warning" -Buttons YesNo -Icon Warning
             if ($result -eq "No") { return }
         }
         
         if ([string]::IsNullOrWhiteSpace($cursorBox.Text) -or -not (Test-Path $cursorBox.Text)) {
-            Show-MessageBox "אנא בחר מיקום תקין של Cursor.exe" "שגיאה" -Icon Warning
+            Show-MessageBox "Please select valid Cursor.exe location" "Error" -Icon Warning
             return
         }
         
         # Disable button
         $installBtn.Enabled = $false
-        $installBtn.Text = "מתקין..."
+        $installBtn.Text = "Installing..."
         
         # Store values
         $script:Password = $passBox.Text
@@ -380,8 +380,8 @@ try {
     $npmOutput = npm install 2>&1
     Write-Log "תלויות הותקנו בהצלחה ✓" "SUCCESS"
 } catch {
-    Write-Log "שגיאה בהתקנת תלויות: $_" "ERROR"
-    Show-MessageBox "התקנת התלויות נכשלה.`nאנא ודא שיש לך חיבור אינטרנט ונסה שוב." "שגיאה" -Icon Error
+    Write-Log "Error בהתקנת תלויות: $_" "ERROR"
+    Show-MessageBox "התקנת התלויות נכשלה.`nאנא ודא שיש לך חיבור אינטרנט ונסה שוב." "Error" -Icon Error
     exit 1
 }
 
@@ -410,7 +410,7 @@ if ($script:InstallTailscale) {
     } else {
         $tsResult = Install-Tailscale
         if (-not $tsResult) {
-            Show-MessageBox "התקנת Tailscale נכשלה.`nתוכל להתקין אותו ידנית מ: https://tailscale.com/download" "אזהרה" -Icon Warning
+            Show-MessageBox "התקנת Tailscale נכשלה.`nתוכל להתקין אותו ידנית מ: https://tailscale.com/download" "Warning" -Icon Warning
         }
     }
 }
@@ -423,7 +423,7 @@ if ($script:EnableAutostart) {
         Create-AutostartShortcut -ProjectPath $projectPath
         Write-Log "Autostart הוגדר בהצלחה ✓" "SUCCESS"
     } catch {
-        Write-Log "שגיאה בהגדרת autostart: $_" "WARNING"
+        Write-Log "Error בהגדרת autostart: $_" "WARNING"
     }
 }
 

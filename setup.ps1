@@ -1,4 +1,4 @@
-# Cursor Mobile Setup Script
+﻿# Cursor Mobile Setup Script
 # One-click installation and configuration
 
 param(
