@@ -35,7 +35,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // here — after the static imports have resolved — is correct.
 try {
   const dotenv = await import('dotenv');
-  dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+  dotenv.config({ path: path.resolve(__dirname, '..', '.env'), override: true });
 } catch {
   // dotenv is optional — not critical if missing.
 }

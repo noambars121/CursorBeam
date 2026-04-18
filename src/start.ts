@@ -22,7 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
 try {
   const dotenv = await import('dotenv');
-  dotenv.config({ path: path.join(projectRoot, '.env') });
+  dotenv.config({ path: path.join(projectRoot, '.env'), override: true });
 } catch {
   // dotenv not critical
 }
