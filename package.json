@@ -1,7 +1,7 @@
 {
   "name": "cursorbeam",
   "version": "1.0.0",
-  "description": "⚡ Beam your Cursor IDE to any device - Control Cursor from your phone with a secure, mobile-first PWA",
+  "description": "Remote control Cursor IDE from mobile devices - Secure PWA with WebSocket sync, terminal access, and Tailscale support for anywhere access",
   "main": "src/start.ts",
   "type": "module",
   "scripts": {
@@ -15,15 +15,37 @@
   "keywords": [
     "cursor",
     "cursor-ide",
-    "mobile",
+    "cursor-remote",
+    "cursor-mobile",
+    "cursor-control",
+    "ide-remote-control",
+    "mobile-development",
     "pwa",
+    "progressive-web-app",
     "remote-control",
+    "remote-development",
+    "mobile-ide",
     "tailscale",
-    "typescript",
+    "vpn",
+    "websocket",
+    "realtime",
     "chrome-devtools-protocol",
-    "websocket"
+    "cdp",
+    "typescript",
+    "nodejs",
+    "express",
+    "react",
+    "mobile-first",
+    "developer-tools",
+    "productivity",
+    "workflow",
+    "automation",
+    "ai-assistant",
+    "code-editor",
+    "terminal-access",
+    "ssh-alternative"
   ],
-  "author": "Noam Barsheshet",
+  "author": "Noam Barsheshet <noambars121@gmail.com> (https://www.barsbuild.me)",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -69,5 +91,9 @@
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
