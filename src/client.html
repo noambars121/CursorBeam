@@ -2305,20 +2305,49 @@ function renderProjectBtn() {
 }
 
 function selectProject(id) {
-  if (id === activeProjectId || projectSwitching) return;
+  if (id === activeProjectId) {
+    showToast('Already on this project', 2000);
+    return;
+  }
+  if (projectSwitching) {
+    showToast('Project switch in progress...', 2000);
+    return;
+  }
+  
+  // Get project name
+  var targetProj = null;
+  for (var i = 0; i < projectsCache.length; i++) {
+    if (projectsCache[i].id === id) {
+      targetProj = projectsCache[i];
+      break;
+    }
+  }
+  if (!targetProj) {
+    showToast('Project not found', 3000);
+    return;
+  }
+  
   projectSwitching = true;
-  // Immediately flip the dot to switching_project so the user doesn't see the
-  // yellow "reconnecting" that would otherwise appear when CDP drops.
   updateStatus(null);
   $projectOverlay.classList.remove('visible');
   $projectBtn.disabled = true;
 
   switchOverlayEl = document.createElement('div');
   switchOverlayEl.className = 'project-switching-overlay';
-  switchOverlayEl.innerHTML = '<div><span class="switching-spinner"></span>Switching project...</div>';
+  switchOverlayEl.innerHTML = '<div><span class="switching-spinner"></span><div style="margin-top:12px">Switching to<br><strong>' + targetProj.name + '</strong></div><div style="margin-top:8px;font-size:13px;color:var(--text-tertiary)">This may take 10-20 seconds...</div></div>';
   document.body.appendChild(switchOverlayEl);
 
   disableAllControls(true);
+  
+  var startTime = Date.now();
+  var timeoutHandle = setTimeout(function() {
+    projectSwitching = false;
+    $projectBtn.disabled = false;
+    if (switchOverlayEl) { switchOverlayEl.remove(); switchOverlayEl = null; }
+    disableAllControls(false);
+    updateStatus(null);
+    showToast('Switch timed out. Open project manually in Cursor.', 5000);
+  }, 50000);
 
   fetch(BASE + '/project/select', {
     method: 'POST',
@@ -2326,28 +2355,43 @@ function selectProject(id) {
     body: JSON.stringify({ projectId: id }),
   }).then(function(r) {
     if (r.status === 401) { logout(); return null; }
+    if (!r.ok) {
+      return r.json().then(function(err) {
+        throw new Error(err.error || 'HTTP ' + r.status);
+      });
+    }
     return r.json();
   }).then(function(j) {
     if (!j) return;
+    clearTimeout(timeoutHandle);
+    
     if (j.ok) {
       activeProjectId = j.projectId || id;
       renderProjectBtn();
-      showToast('Switched to ' + (j.projectName || id), 3000);
+      
+      var elapsed = Math.round((Date.now() - startTime) / 1000);
+      showToast('✓ Switched to ' + (j.projectName || id) + ' (' + elapsed + 's)', 3000);
+      
       prevMsgs = [];
       $msgs.innerHTML = '';
-      loadState();
+      
+      // Reload state after a moment
+      setTimeout(function() {
+        loadState();
+      }, 1000);
     } else {
-      showToast('Switch failed: ' + (j.error || 'unknown'), 4000);
+      showToast('Failed: ' + (j.error || 'unknown error'), 5000);
     }
   }).catch(function(e) {
-    showToast('Switch error: ' + e.message, 4000);
+    clearTimeout(timeoutHandle);
+    var msg = e.message || String(e);
+    console.error('Project switch error:', msg);
+    showToast('Error: ' + msg, 5000);
   }).finally(function() {
     projectSwitching = false;
     $projectBtn.disabled = false;
     if (switchOverlayEl) { switchOverlayEl.remove(); switchOverlayEl = null; }
     disableAllControls(false);
-    // Refresh the dot now that projectSwitching is off — it resolves to
-    // connected/reconnecting based on the current WS state.
     updateStatus(null);
   });
 }
