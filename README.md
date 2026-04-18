@@ -142,10 +142,10 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 
 The installer will:
 - ![](https://img.shields.io/badge/-Install_dependencies-informational?style=flat-square)
-- ![](https://img.shields.io/badge/-Generate_password-informational?style=flat-square)
+- ![](https://img.shields.io/badge/-Generate_secure_password-informational?style=flat-square)
 - ![](https://img.shields.io/badge/-Auto_detect_Cursor-informational?style=flat-square)
-- ![](https://img.shields.io/badge/-Optional_Tailscale_setup-informational?style=flat-square)
-- ![](https://img.shields.io/badge/-Configure_autostart-informational?style=flat-square)
+- ![](https://img.shields.io/badge/-Optional_Tailscale_installation-informational?style=flat-square)
+- ![](https://img.shields.io/badge/-Install_as_Windows_Service-informational?style=flat-square) (daemon with auto-start)
 
 #### Option 2: Command Line
 
@@ -210,6 +210,7 @@ npm start
 |----------|-------------|
 | ![](https://img.shields.io/badge/QUICKSTART-Hebrew-blue?style=flat-square) [QUICKSTART.md](QUICKSTART.md) | Fast setup guide (Hebrew) |
 | ![](https://img.shields.io/badge/INSTALL-English-green?style=flat-square) [INSTALL.md](INSTALL.md) | Detailed installation |
+| ![](https://img.shields.io/badge/SERVICE-Windows_Daemon-brightgreen?style=flat-square) [SERVICE.md](SERVICE.md) | Windows Service setup |
 | ![](https://img.shields.io/badge/TAILSCALE-Installation-purple?style=flat-square) [INSTALL_TAILSCALE.md](INSTALL_TAILSCALE.md) | Tailscale setup guide |
 | ![](https://img.shields.io/badge/TAILSCALE-Usage-purple?style=flat-square) [TAILSCALE-GUIDE.md](TAILSCALE-GUIDE.md) | Remote access guide (Hebrew) |
 | ![](https://img.shields.io/badge/TROUBLESHOOTING-Help-orange?style=flat-square) [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Problem solving |

@@ -10,7 +10,12 @@
     "start": "npx tsx src/start.ts",
     "relay": "npx tsx src/relay-server.ts",
     "check": "tsc --noEmit",
-    "test:edit": "npx tsx src/edit-flow.test.ts"
+    "test:edit": "npx tsx src/edit-flow.test.ts",
+    "service:install": "node service-install.js",
+    "service:uninstall": "node service-uninstall.js",
+    "service:start": "node service-control.js start",
+    "service:stop": "node service-control.js stop",
+    "service:restart": "node service-control.js restart"
   },
   "keywords": [
     "cursor",
@@ -67,6 +72,7 @@
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "node-windows": "^1.0.0-beta.8",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",
     "web-push": "^3.6.7",

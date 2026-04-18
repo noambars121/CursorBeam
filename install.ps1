@@ -114,43 +114,27 @@ function Find-CursorPath {
     return $null
 }
 
-function Create-AutostartShortcut {
+function Install-WindowsService {
     param([string]$ProjectPath)
     
-    $startupFolder = [Environment]::GetFolderPath("Startup")
-    $shortcutPath = Join-Path $startupFolder "CursorBeam.lnk"
+    Write-Log "Installing as Windows Service..." "INFO"
     
-    $WScriptShell = New-Object -ComObject WScript.Shell
-    $shortcut = $WScriptShell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath = "powershell.exe"
-    $shortcut.Arguments = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ProjectPath\start-hidden.ps1`""
-    $shortcut.WorkingDirectory = $ProjectPath
-    $shortcut.Description = "CursorBeam Server"
-    $shortcut.Save()
-    
-    Write-Log "Autostart shortcut created successfully" "SUCCESS"
-}
-
-function Create-HiddenStartScript {
-    param([string]$ProjectPath)
-    
-    $scriptContent = @'
-# Hidden startup script for CursorBeam
-$projectPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $projectPath
-
-# Start the server in a hidden window
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = "cmd.exe"
-$psi.Arguments = "/c npm start"
-$psi.WorkingDirectory = $projectPath
-$psi.WindowStyle = "Hidden"
-$psi.CreateNoWindow = $true
-[System.Diagnostics.Process]::Start($psi) | Out-Null
-'@
-    
-    $scriptPath = Join-Path $ProjectPath "start-hidden.ps1"
-    Set-Content -Path $scriptPath -Value $scriptContent -Encoding UTF8
+    try {
+        # Run service installation
+        Set-Location $ProjectPath
+        $output = npm run service:install 2>&1
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "Windows Service installed successfully!" "SUCCESS"
+            return $true
+        } else {
+            Write-Log "Service installation returned exit code: $LASTEXITCODE" "WARNING"
+            return $false
+        }
+    } catch {
+        Write-Log "Error installing service: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
 }
 
 function Create-StartBatchFile {
@@ -319,9 +303,9 @@ function Show-SetupForm {
 
     $y += 45
 
-    # Autostart option
+    # Autostart option (Windows Service)
     $autostartCheck = New-Object System.Windows.Forms.CheckBox
-    $autostartCheck.Text = "Start automatically with Windows"
+    $autostartCheck.Text = "Install as Windows Service (recommended)"
     $autostartCheck.Location = New-Object System.Drawing.Point(40, $y)
     $autostartCheck.Size = New-Object System.Drawing.Size(520, 25)
     $autostartCheck.Checked = $true
@@ -330,9 +314,9 @@ function Show-SetupForm {
     $y += 30
 
     $autostartInfo = New-Object System.Windows.Forms.Label
-    $autostartInfo.Text = "Server will start in the background when you boot Windows"
+    $autostartInfo.Text = "Installs as a background service (daemon) that starts with Windows. Requires admin privileges."
     $autostartInfo.Location = New-Object System.Drawing.Point(40, $y)
-    $autostartInfo.Size = New-Object System.Drawing.Size(520, 20)
+    $autostartInfo.Size = New-Object System.Drawing.Size(520, 35)
     $autostartInfo.ForeColor = [System.Drawing.Color]::Gray
     $autostartInfo.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $form.Controls.Add($autostartInfo)
@@ -499,15 +483,43 @@ if ($script:InstallTailscale) {
     }
 }
 
-# Create autostart if requested
+# Install as Windows Service if requested
 if ($script:EnableAutostart) {
-    Write-Log "Configuring autostart..."
+    Write-Log "Installing as Windows Service (daemon)..." "INFO"
+    Write-Host ""
+    Write-Host "NOTE: This requires administrator privileges" -ForegroundColor Yellow
+    Write-Host "      If prompted, click 'Yes' to allow installation" -ForegroundColor Yellow
+    Write-Host ""
+    
     try {
-        Create-HiddenStartScript -ProjectPath $projectPath
-        Create-AutostartShortcut -ProjectPath $projectPath
-        Write-Log "Autostart configured successfully ✓" "SUCCESS"
+        $serviceResult = Install-WindowsService -ProjectPath $projectPath
+        
+        if ($serviceResult) {
+            Write-Log "Windows Service installed successfully ✓" "SUCCESS"
+            Write-Host ""
+            Write-Host "CursorBeam is now installed as a Windows Service!" -ForegroundColor Green
+            Write-Host "The service will:" -ForegroundColor Cyan
+            Write-Host "  • Start automatically when Windows boots" -ForegroundColor White
+            Write-Host "  • Run in the background" -ForegroundColor White
+            Write-Host "  • Restart automatically if it crashes" -ForegroundColor White
+            Write-Host ""
+            Write-Host "To manage the service:" -ForegroundColor Cyan
+            Write-Host "  • Open Services: Win+R → services.msc → Find 'CursorBeam'" -ForegroundColor White
+            Write-Host "  • Stop service:  npm run service:stop" -ForegroundColor White
+            Write-Host "  • Start service: npm run service:start" -ForegroundColor White
+            Write-Host "  • Uninstall:     npm run service:uninstall" -ForegroundColor White
+            Write-Host ""
+        } else {
+            Write-Log "Warning: Could not install Windows Service" "WARNING"
+            Write-Host ""
+            Write-Host "You can install the service manually later:" -ForegroundColor Yellow
+            Write-Host "  1. Open PowerShell as Administrator" -ForegroundColor White
+            Write-Host "  2. Navigate to this folder" -ForegroundColor White
+            Write-Host "  3. Run: npm run service:install" -ForegroundColor White
+            Write-Host ""
+        }
     } catch {
-        Write-Log "Warning: Could not configure autostart: $_" "WARNING"
+        Write-Log "Warning: Service installation failed: $_" "WARNING"
     }
 }
 
@@ -547,16 +559,38 @@ Write-Host "       Installation Complete! ✓" -ForegroundColor White
 Write-Host "═══════════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
 
+$serviceInstalled = $script:EnableAutostart
+
 $completionMessage = @"
 ✓ CursorBeam has been installed successfully!
 
-📱 HOW TO CONNECT FROM YOUR PHONE:
+"@
 
-1. Start the server:
+if ($serviceInstalled) {
+    $completionMessage += @"
+🔷 WINDOWS SERVICE STATUS:
+   The server is now running as a Windows Service (daemon)
+   • Starts automatically on boot
+   • Runs in background
+   • Auto-restarts if it crashes
+
+   To manage: Win+R → services.msc → Find "CursorBeam"
+
+"@
+} else {
+    $completionMessage += @"
+📝 TO START THE SERVER:
    • Double-click 'start.bat', OR
    • Run 'npm start' in this folder
 
-2. Connect from your phone:
+"@
+}
+
+$completionMessage += @"
+
+📱 HOW TO CONNECT FROM YOUR PHONE:
+
+1. Connect from your phone:
 "@
 
 if ($localIp) {
@@ -571,24 +605,37 @@ if ($tailscaleIp) {
 $completionMessage += @"
 
 
-3. Login with your password
+2. Login with your password
 
 💡 TIPS:
-• Server will start automatically when you boot Windows
 • Add the PWA to your phone's home screen (works like an app!)
-• Need help? Check README.md and TROUBLESHOOTING.md
+• Need help? Check README.md and SERVICE.md
+• To uninstall service: npm run service:uninstall
 
-Would you like to start the server now?
 "@
+
+if (-not $serviceInstalled) {
+    $completionMessage += "Would you like to start the server now?"
+} else {
+    $completionMessage += "The service is already running. Ready to connect!"
+}
 
 Write-Host $completionMessage
 
-$startNow = Show-MessageBox $completionMessage "Installation Complete!" -Buttons YesNo -Icon Information
-
-if ($startNow -eq "Yes") {
-    Write-Log "Starting server..."
-    $batPath = Join-Path $projectPath "start.bat"
-    Start-Process -FilePath $batPath
+if ($serviceInstalled) {
+    Show-MessageBox $completionMessage "Installation Complete!" -Buttons OK -Icon Information
+} else {
+    $startNow = Show-MessageBox $completionMessage "Installation Complete!" -Buttons YesNo -Icon Information
+    
+    if ($startNow -eq "Yes") {
+        Write-Log "Starting server..."
+        $batPath = Join-Path $projectPath "start.bat"
+        if (Test-Path $batPath) {
+            Start-Process -FilePath $batPath
+        } else {
+            Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$projectPath'; npm start"
+        }
+    }
 }
 
 Write-Host ""
