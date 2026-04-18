@@ -186,10 +186,9 @@ function findCursorCli(): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Opens a project folder in Cursor. Uses the CLI without --reuse-window
- * so a new window is created (or an existing one for that folder is reused
- * by Cursor itself). The new window is accessible via CDP since it belongs
- * to the same Cursor process.
+ * Opens a project folder in Cursor. Uses the CLI with --reuse-window
+ * so it switches the current Cursor window to the new project instead
+ * of opening a new window. This is more reliable for CDP tracking.
  */
 export function launchCursorWithFolder(projectPath: string): void {
   const cli = findCursorCli();
@@ -199,11 +198,14 @@ export function launchCursorWithFolder(projectPath: string): void {
     throw new Error(`Project path does not exist: ${normalized}`);
   }
 
-  const child = spawn(cli, [normalized], {
+  // Use --reuse-window to switch the current window instead of opening new
+  const child = spawn(cli, ['--reuse-window', normalized], {
     detached: true,
     stdio: 'ignore',
     shell: true,
     windowsHide: false,
   });
   child.unref();
+  
+  console.log(`[ProjectManager] Launched: cursor --reuse-window "${normalized}"`);
 }

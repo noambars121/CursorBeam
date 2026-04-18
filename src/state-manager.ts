@@ -2909,83 +2909,60 @@ export class CdpStateManager extends EventEmitter {
     }
 
     try {
-      // Step 1: Launch Cursor with the new folder (opens new window or reuses existing)
+      // Step 1: Launch Cursor with the new folder using --reuse-window
+      this.log(`Launching: cursor --reuse-window "${projectPath}"`);
       launchCursorWithFolder(projectPath);
-      this.log('Cursor CLI invoked — scanning for matching CDP target');
+      
+      // Give Cursor a moment to start switching
+      await this.sleep(1500);
 
-      // Step 2: Wait for a CDP target whose title includes the project folder name
-      const deadline = Date.now() + 30_000;
-      let connected = false;
+      // Step 2: Wait for window title to change
+      const deadline = Date.now() + 45_000; // Increased timeout
+      let titleChanged = false;
+      const projectName = projectPath.split(/[/\\]/).pop()?.toLowerCase() || '';
 
       while (Date.now() < deadline) {
-        await this.sleep(2000);
+        await this.sleep(1500);
+        
         try {
-          const targets = await CdpClient.fetchTargets(this.cdpBase);
-          const pages = targets.filter((t: { type: string }) => t.type === 'page');
-
-          // Find a target matching the expected project
-          const match = pages.find((t: { title: string }) => detectActiveProject(t.title) === expectedId);
-          if (!match) {
-            this.log(`No CDP target matches project "${expectedId}" yet (${pages.length} page targets)`);
-            continue;
+          // Try to extract state from current connection
+          const state = await this.client!.callFunction(extractCursorState);
+          const currentTitle = state.windowTitle.toLowerCase();
+          
+          // Check if title now includes the new project name
+          if (currentTitle.includes(projectName)) {
+            this.log(`Window title updated to: "${state.windowTitle}"`);
+            titleChanged = true;
+            
+            // Update state immediately
+            this.lastState = state;
+            this.lastExtraction = Date.now();
+            this.emit('change', {
+              type: 'state_change',
+              snapshot: this.buildSnapshot(state),
+              newMessages: state.messages,
+              removedCount: 0,
+            } as StateChangeEvent);
+            
+            return { ok: true };
           }
-
-          // Disconnect from old target, connect to the matching one
-          this.client?.disconnect();
-          this.client = new CdpClient(match.webSocketDebuggerUrl!);
-          await this.client.connect();
-          this.log(`Connected to: ${match.title}`);
-
-          // Step 3: Wait for composer to appear in the new workspace
-          for (let ci = 0; ci < 10; ci++) {
-            await this.sleep(500);
-            try {
-              const hasComposer = await this.client.evaluate(`
-                (function() {
-                  var el = document.querySelector('.aislash-editor-input[contenteditable="true"]');
-                  return !!el;
-                })()
-              `) as boolean;
-              if (hasComposer) {
-                this.log('Composer detected in new workspace');
-                connected = true;
-                break;
-              }
-            } catch {
-              // DOM not ready yet
-            }
-          }
-          if (connected) break;
-          this.log('Composer not found in matched target, retrying...');
-        } catch {
-          // CDP not yet available
+          
+          this.log(`Waiting for title change... Current: "${state.windowTitle}", Expected: contains "${projectName}"`);
+        } catch (err) {
+          this.log(`CDP extraction failed during switch: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
 
-      if (!connected) {
-        this.log('Project switch timed out waiting for matching target');
-        return { ok: false, error: 'Timed out waiting for Cursor window with the new project' };
-      }
-
-      // Step 4: Extract fresh state
-      this.lastState = null;
-      try {
-        const state = await this.client!.callFunction(extractCursorState);
-        this.lastState = state;
-        this.lastExtraction = Date.now();
-        this.emit('change', {
-          type: 'state_change',
-          snapshot: this.buildSnapshot(state),
-          newMessages: state.messages,
-          removedCount: 0,
-        } as StateChangeEvent);
-      } catch (err) {
-        this.log(`Post-switch extraction failed: ${err instanceof Error ? err.message : String(err)}`);
+      if (!titleChanged) {
+        this.log('Project switch timed out - window title did not change');
+        return { ok: false, error: 'Cursor did not switch to the new project. Try opening it manually in Cursor first.' };
       }
 
       return { ok: true };
     } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      const errMsg = err instanceof Error ? err.message : String(err);
+      this.log(`Project switch error: ${errMsg}`);
+      return { ok: false, error: errMsg };
     } finally {
       this._switchingProject = false;
     }

@@ -122,6 +122,30 @@
 
 ## Quick Start
 
+### 📥 Download Installer (Recommended)
+
+**The easiest way to install CursorBeam:**
+
+1. Download the latest installer:
+   ```
+   https://github.com/noambars121/CursorBeam/releases/latest
+   ```
+2. Run `CursorBeam-Setup-v1.0.0.exe`
+3. Follow the setup wizard
+4. Done! 🎉
+
+**What's included:**
+- ✅ Automatic Node.js installation
+- ✅ One-click setup wizard
+- ✅ Desktop shortcuts
+- ✅ Windows Service installation
+- ✅ Cursor CDP configuration
+- ✅ Uninstaller via Control Panel
+
+---
+
+### 🛠️ Manual Installation (For Developers)
+
 ### Prerequisites
 
 ![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)
