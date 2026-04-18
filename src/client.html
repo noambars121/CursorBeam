@@ -1267,6 +1267,12 @@ button:active:not(:disabled) {
             <span style="color:var(--text-tertiary);">></span>
           </div>
         </li>
+        <li onclick="closeMenuPicker(); openSystemStatus();">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <span>System Status</span>
+            <span style="color:var(--text-tertiary); font-size:16px;" aria-hidden="true">📊</span>
+          </div>
+        </li>
         <li onclick="closeMenuPicker(); doRestartRelay();">
           <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
             <span>Restart Relay</span>
@@ -1307,6 +1313,44 @@ button:active:not(:disabled) {
       <ul id="model-list" class="panel-list"><li style="color:var(--dim);padding:16px">Loading...</li></ul>
     </div>
   </div>
+
+  <div id="status-overlay" class="overlay" onclick="closeSystemStatus(event)">
+    <div id="status-panel" class="panel" style="max-width:400px">
+      <div class="panel-header">
+        <h3>System Status</h3>
+        <button class="panel-close" onclick="closeSystemStatus()">&times;</button>
+      </div>
+      <div style="padding:20px">
+        <div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;margin-bottom:12px">
+            <span id="status-supervisor-ind" style="width:10px;height:10px;border-radius:50%;background:var(--text-tertiary);margin-right:12px"></span>
+            <span style="font-size:15px">Supervisor Service</span>
+            <span id="status-supervisor-text" style="margin-left:auto;color:var(--text-tertiary);font-size:13px">Checking...</span>
+          </div>
+          <div style="display:flex;align-items:center;margin-bottom:12px">
+            <span id="status-relay-ind" style="width:10px;height:10px;border-radius:50%;background:var(--text-tertiary);margin-right:12px"></span>
+            <span style="font-size:15px">Relay Server</span>
+            <span id="status-relay-text" style="margin-left:auto;color:var(--text-tertiary);font-size:13px">Checking...</span>
+          </div>
+          <div style="display:flex;align-items:center">
+            <span id="status-cursor-ind" style="width:10px;height:10px;border-radius:50%;background:var(--text-tertiary);margin-right:12px"></span>
+            <span style="font-size:15px">Cursor IDE</span>
+            <span id="status-cursor-text" style="margin-left:auto;color:var(--text-tertiary);font-size:13px">Checking...</span>
+          </div>
+        </div>
+        
+        <div id="status-actions" style="display:none">
+          <button id="status-start-relay-btn" onclick="doStartRelayFromStatus()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;margin-bottom:10px;display:none">Start Relay</button>
+          <button id="status-restart-relay-btn" onclick="doRestartRelay();closeSystemStatus()" style="width:100%;padding:12px;background:var(--surface-elevated);color:var(--text);border:none;border-radius:10px;font-size:15px;font-weight:500;display:none">Restart Relay</button>
+        </div>
+        
+        <div id="status-help" style="margin-top:16px;padding:14px;background:var(--bg);border-radius:10px;font-size:13px;color:var(--text-tertiary);line-height:1.6;display:none"></div>
+        
+        <button onclick="refreshSystemStatus()" style="width:100%;padding:10px;background:var(--surface-elevated);color:var(--text-secondary);border:none;border-radius:10px;font-size:14px;margin-top:12px">Refresh</button>
+      </div>
+    </div>
+  </div>
+
   <div id="chat-view">
     <div id="mode-bar">
       <div id="mode-bar-row">
