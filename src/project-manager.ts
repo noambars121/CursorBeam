@@ -186,9 +186,11 @@ function findCursorCli(): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Opens a project folder in Cursor. Uses the CLI with --reuse-window
- * so it switches the current Cursor window to the new project instead
- * of opening a new window. This is more reliable for CDP tracking.
+ * Opens a project folder in Cursor in a new window (-n). We deliberately
+ * avoid --reuse-window because reusing a window with unsaved edits pops a
+ * blocking "save changes?" dialog that freezes the switch. The state
+ * manager attaches to the new workbench target by title, so new windows
+ * track cleanly.
  */
 export function launchCursorWithFolder(projectPath: string): void {
   const cli = findCursorCli();
@@ -198,14 +200,18 @@ export function launchCursorWithFolder(projectPath: string): void {
     throw new Error(`Project path does not exist: ${normalized}`);
   }
 
-  // Use --reuse-window to switch the current window instead of opening new
-  const child = spawn(cli, ['--reuse-window', normalized], {
+  // Build a single quoted command string. With shell:true + args-array on
+  // Windows, Node does not re-quote array entries, so paths with spaces
+  // (e.g. "PIZZA BUENA", "cursor mobile") get split by cmd.exe and the
+  // switch silently fails. Passing one pre-quoted string avoids that.
+  const cmd = `"${cli}" -n "${normalized}"`;
+  const child = spawn(cmd, {
     detached: true,
     stdio: 'ignore',
     shell: true,
-    windowsHide: false,
+    windowsHide: true,
   });
   child.unref();
-  
-  console.log(`[ProjectManager] Launched: cursor --reuse-window "${normalized}"`);
+
+  console.log(`[ProjectManager] Launched: ${cmd}`);
 }

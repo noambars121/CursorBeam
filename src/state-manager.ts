@@ -2909,53 +2909,80 @@ export class CdpStateManager extends EventEmitter {
     }
 
     try {
-      // Step 1: Launch Cursor with the new folder using --reuse-window
-      this.log(`Launching: cursor --reuse-window "${projectPath}"`);
+      // Step 1: Launch Cursor with the new folder in a new window
+      this.log(`Launching: cursor -n "${projectPath}"`);
       launchCursorWithFolder(projectPath);
-      
+
       // Give Cursor a moment to start switching
       await this.sleep(1500);
 
-      // Step 2: Wait for window title to change
-      const deadline = Date.now() + 45_000; // Increased timeout
-      let titleChanged = false;
+      // Step 2: Scan CDP targets for a workbench matching the new project.
+      // Cursor sometimes honours -r (same target, title flips) and sometimes
+      // spawns a brand-new window (a new workbench target appears). We handle
+      // both by searching all targets by title each iteration and attaching
+      // to whichever matches — not relying on the pre-existing connection.
+      const deadline = Date.now() + 45_000;
       const projectName = projectPath.split(/[/\\]/).pop()?.toLowerCase() || '';
+      let attached = false;
 
       while (Date.now() < deadline) {
         await this.sleep(1500);
-        
+
+        let targets;
         try {
-          // Try to extract state from current connection
-          const state = await this.client!.callFunction(extractCursorState);
-          const currentTitle = state.windowTitle.toLowerCase();
-          
-          // Check if title now includes the new project name
-          if (currentTitle.includes(projectName)) {
-            this.log(`Window title updated to: "${state.windowTitle}"`);
-            titleChanged = true;
-            
-            // Update state immediately
-            this.lastState = state;
-            this.lastExtraction = Date.now();
-            this.emit('change', {
-              type: 'state_change',
-              snapshot: this.buildSnapshot(state),
-              newMessages: state.messages,
-              removedCount: 0,
-            } as StateChangeEvent);
-            
-            return { ok: true };
-          }
-          
-          this.log(`Waiting for title change... Current: "${state.windowTitle}", Expected: contains "${projectName}"`);
+          targets = await CdpClient.fetchTargets(this.cdpBase);
         } catch (err) {
-          this.log(`CDP extraction failed during switch: ${err instanceof Error ? err.message : String(err)}`);
+          this.log(`fetchTargets failed during switch: ${err instanceof Error ? err.message : String(err)}`);
+          continue;
         }
+
+        const match = targets.find(
+          (t) =>
+            t.type === 'page' &&
+            typeof t.url === 'string' && t.url.includes('workbench') &&
+            typeof t.title === 'string' && t.title.toLowerCase().includes(projectName) &&
+            !!t.webSocketDebuggerUrl,
+        );
+
+        if (!match) {
+          const titles = targets
+            .filter((t) => t.type === 'page' && typeof t.url === 'string' && t.url.includes('workbench'))
+            .map((t) => `"${t.title}"`)
+            .join(', ') || '(none)';
+          this.log(`Waiting for "${projectName}"... workbenches seen: ${titles}`);
+          continue;
+        }
+
+        this.log(`Found new workbench: "${match.title}" — attaching`);
+
+        // Swap the CDP client to the new workbench target
+        try { this.client?.disconnect(); } catch { /* ignore */ }
+        this.client = new CdpClient(match.webSocketDebuggerUrl!);
+        await this.client.connect();
+        this.log(`Attached to: ${match.title}`);
+        attached = true;
+
+        // Pull fresh state from the new window so the UI reflects the switch
+        try {
+          const state = await this.client.callFunction(extractCursorState);
+          this.lastState = state;
+          this.lastExtraction = Date.now();
+          this.emit('change', {
+            type: 'state_change',
+            snapshot: this.buildSnapshot(state),
+            newMessages: state.messages,
+            removedCount: 0,
+          } as StateChangeEvent);
+        } catch (err) {
+          this.log(`Post-switch state extraction failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+
+        return { ok: true };
       }
 
-      if (!titleChanged) {
-        this.log('Project switch timed out - window title did not change');
-        return { ok: false, error: 'Cursor did not switch to the new project. Try opening it manually in Cursor first.' };
+      if (!attached) {
+        this.log('Project switch timed out - no workbench matching project name appeared');
+        return { ok: false, error: 'Cursor did not open the new project. Try opening it manually in Cursor first.' };
       }
 
       return { ok: true };

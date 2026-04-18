@@ -41,15 +41,12 @@ try {
 }
 const CLIENT_HTML = fs.readFileSync(path.join(__dirname, 'client.html'), 'utf-8');
 
-const APP_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-<rect width="192" height="192" rx="40" fill="#0d1117"/>
-<text x="96" y="126" font-family="-apple-system,system-ui,sans-serif" font-size="72" font-weight="700" fill="#58a6ff" text-anchor="middle">CR</text>
-</svg>`;
+const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 
 const MANIFEST_JSON = JSON.stringify({
   id: '/cursor-remote',
-  name: 'Cursor Remote',
-  short_name: 'Cursor',
+  name: 'CursorBeam',
+  short_name: 'CursorBeam',
   start_url: '/',
   scope: '/',
   display: 'standalone',
@@ -57,9 +54,29 @@ const MANIFEST_JSON = JSON.stringify({
   background_color: '#0d1117',
   theme_color: '#0d1117',
   icons: [
-    { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
   ],
 });
+
+// Lazy-loaded, small static assets served from ./assets
+const ICON_ROUTES: Record<string, { file: string; type: string }> = {
+  '/favicon.ico':   { file: 'favicon.ico',    type: 'image/x-icon' },
+  '/icon-192.png':  { file: 'icon-192.png',   type: 'image/png' },
+  '/icon-512.png':  { file: 'icon-512.png',   type: 'image/png' },
+  '/icon-384.png':  { file: 'icon-384.png',   type: 'image/png' },
+  '/icon-256.png':  { file: 'icon-256.png',   type: 'image/png' },
+  '/icon-128.png':  { file: 'icon-128.png',   type: 'image/png' },
+  '/icon-96.png':   { file: 'icon-96.png',    type: 'image/png' },
+  '/icon-64.png':   { file: 'icon-64.png',    type: 'image/png' },
+  '/icon-48.png':   { file: 'icon-48.png',    type: 'image/png' },
+  '/icon-32.png':   { file: 'icon-32.png',    type: 'image/png' },
+  '/icon-16.png':   { file: 'icon-16.png',    type: 'image/png' },
+  '/logo.png':      { file: 'logo.png',       type: 'image/png' },
+};
+const ICON_CACHE = new Map<string, Buffer>();
 
 // ---------------------------------------------------------------------------
 // Config
@@ -232,10 +249,21 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // ----- GET /icon.svg -----
-    if (method === 'GET' && url.pathname === '/icon.svg') {
-      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
-      res.end(APP_ICON_SVG);
+    // ----- GET static icon assets (png / ico) -----
+    if (method === 'GET' && ICON_ROUTES[url.pathname]) {
+      const entry = ICON_ROUTES[url.pathname];
+      try {
+        let buf = ICON_CACHE.get(url.pathname);
+        if (!buf) {
+          buf = fs.readFileSync(path.join(ASSETS_DIR, entry.file));
+          ICON_CACHE.set(url.pathname, buf);
+        }
+        res.writeHead(200, { 'Content-Type': entry.type, 'Cache-Control': 'public, max-age=86400' });
+        res.end(buf);
+      } catch {
+        res.writeHead(404);
+        res.end();
+      }
       return;
     }
 
