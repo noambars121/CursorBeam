@@ -19,6 +19,8 @@
 [![PWA](https://img.shields.io/badge/PWA-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 [![Tailscale](https://img.shields.io/badge/Tailscale-242424?logo=tailscale&logoColor=white)](https://tailscale.com/)
 
+[**⬇️ Download Installer (Windows)**](https://github.com/noambars121/CursorBeam/releases/latest/download/CursorBeam-Setup-v1.0.0.exe)
+
 [Features](#features) •
 [Quick Start](#quick-start) •
 [Getting Started Guide](GETTING-STARTED.md) •
@@ -124,23 +126,25 @@
 
 ### 📥 Download Installer (Recommended)
 
-**The easiest way to install CursorBeam:**
+<div align="center">
 
-1. Download the latest installer:
-   ```
-   https://github.com/noambars121/CursorBeam/releases/latest
-   ```
-2. Run `CursorBeam-Setup-v1.0.0.exe`
-3. Follow the setup wizard
-4. Done! 🎉
+[![Download CursorBeam Installer](https://img.shields.io/badge/⬇️_Download-CursorBeam--Setup--v1.0.0.exe-success?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/noambars121/CursorBeam/releases/latest/download/CursorBeam-Setup-v1.0.0.exe)
+
+**One-click direct download** · 27 MB · Windows 10/11 (x64) · [All releases →](https://github.com/noambars121/CursorBeam/releases)
+
+</div>
+
+1. Click the button above to download the installer.
+2. Run `CursorBeam-Setup-v1.0.0.exe` — the wizard walks you through password, Cursor path, and projects folder.
+3. Launch CursorBeam from the Start Menu or desktop shortcut. Done.
 
 **What's included:**
-- ✅ Automatic Node.js installation
-- ✅ One-click setup wizard
-- ✅ Desktop shortcuts
-- ✅ Windows Service installation
-- ✅ Cursor CDP configuration
-- ✅ Uninstaller via Control Panel
+- ✅ Portable Node.js 22 bundled — nothing extra to install
+- ✅ Signed-style `.env` generated with secure JWT secret and your chosen password
+- ✅ Desktop shortcut that launches Cursor with `--remote-debugging-port=9222` baked in
+- ✅ Optional Windows Service (auto-start on boot)
+- ✅ Optional Tailscale installation for remote access
+- ✅ Clean uninstaller via Control Panel
 
 ---
 
