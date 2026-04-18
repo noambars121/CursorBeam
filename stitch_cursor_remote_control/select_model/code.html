@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Model Selector</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#98cbff",
+                    "on-primary-fixed": "#001d33",
+                    "tertiary-container": "#2db263",
+                    "primary-container": "#00a3ff",
+                    "on-surface-variant": "#bec7d4",
+                    "surface-dim": "#131313",
+                    "surface-container-highest": "#353534",
+                    "secondary-container": "#474746",
+                    "on-primary": "#003354",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-low": "#1c1b1b",
+                    "tertiary-fixed-dim": "#61de8a",
+                    "on-background": "#e5e2e1",
+                    "on-tertiary-fixed-variant": "#005228",
+                    "tertiary": "#61de8a",
+                    "on-tertiary": "#00391a",
+                    "on-secondary-fixed-variant": "#474746",
+                    "outline-variant": "#3f4852",
+                    "on-secondary-container": "#b7b5b4",
+                    "on-error": "#690005",
+                    "on-surface": "#e5e2e1",
+                    "on-error-container": "#ffdad6",
+                    "primary": "#98cbff",
+                    "inverse-surface": "#e5e2e1",
+                    "surface-variant": "#353534",
+                    "secondary": "#c8c6c5",
+                    "outline": "#88919d",
+                    "on-primary-fixed-variant": "#004a77",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "inverse-on-surface": "#313030",
+                    "background": "#131313",
+                    "primary-fixed": "#cfe5ff",
+                    "inverse-primary": "#00629d",
+                    "error-container": "#93000a",
+                    "surface-container": "#201f1f",
+                    "secondary-fixed": "#e4e2e1",
+                    "tertiary-fixed": "#7efba4",
+                    "on-tertiary-fixed": "#00210c",
+                    "on-secondary": "#303030",
+                    "on-tertiary-container": "#003d1c",
+                    "on-primary-container": "#00375a",
+                    "error": "#ffb4ab",
+                    "surface-tint": "#98cbff",
+                    "surface-container-lowest": "#0e0e0e",
+                    "surface": "#131313",
+                    "secondary-fixed-dim": "#c8c6c5",
+                    "surface-bright": "#3a3939"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "spacing": {},
+            "fontFamily": {
+                    "headline": [
+                            "Inter"
+                    ],
+                    "body": [
+                            "Inter"
+                    ],
+                    "label": [
+                            "Space Grotesk"
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-label { font-family: 'Space Grotesk', monospace; }
+        .bottom-sheet-shadow { box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.4); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased h-screen w-screen overflow-hidden flex flex-col items-center justify-center relative">
+<!-- Background Chat Context (Dimmed/Blurred) -->
+<div class="absolute inset-0 w-full h-full bg-surface-container-low flex flex-col px-4 py-8">
+<!-- Mock Chat Messages -->
+<div class="flex flex-col gap-6 opacity-40 blur-sm pointer-events-none mt-20">
+<div class="self-end bg-surface-container-high rounded-xl p-4 max-w-[80%]">
+<p class="text-on-surface text-sm">Analyze the latest telemetry data from node Alpha.</p>
+</div>
+<div class="self-start flex gap-3 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px] text-on-primary-container">smart_toy</span>
+</div>
+<div class="bg-surface-container rounded-xl p-4">
+<p class="text-on-surface-variant text-sm font-label mb-2">Processing request...</p>
+<p class="text-on-surface text-sm">Node Alpha is currently operating within expected parameters. Minor fluctuations detected in thermal output, well within safety margins.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Top App Bar (From Shared Components) -->
+<header class="fixed top-0 w-full z-40 bg-[#131313]/60 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex justify-between items-center px-6 py-4 border-b-0 border-[#1C1B1B] pointer-events-none opacity-40 blur-sm">
+<button class="text-[#A8A29E]">
+<span class="material-symbols-outlined">hub</span>
+</button>
+<h1 class="text-sm font-bold tracking-tighter text-[#E5E2E1] font-headline uppercase">Project: Alpha-Centauri</h1>
+<button class="text-[#A8A29E]">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+</header>
+<!-- Overlay Scrim -->
+<div class="absolute inset-0 bg-surface-dim/80 backdrop-blur-md z-50"></div>
+<!-- Bottom Sheet Container -->
+<div class="absolute bottom-0 w-full max-w-md bg-surface-container-high rounded-t-xl z-50 flex flex-col bottom-sheet-shadow border-t border-outline-variant/15">
+<!-- Handle -->
+<div class="w-full flex justify-center py-3">
+<div class="w-[40px] h-[4px] bg-outline-variant/40 rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="px-6 pb-4 pt-2">
+<h2 class="font-headline font-bold text-xl text-on-surface tracking-tight">Select Model</h2>
+</div>
+<!-- List Items -->
+<div class="flex flex-col px-4 pb-8 gap-2">
+<!-- Active Item: Claude 3.5 Sonnet -->
+<button class="w-full flex items-center justify-between p-4 rounded-xl bg-primary-container/10 border border-primary/20 shadow-[0_0_12px_rgba(152,203,255,0.1)] transition-colors text-left relative overflow-hidden group">
+<div class="flex items-center gap-4 relative z-10">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline font-medium text-primary text-base">Claude 3.5 Sonnet</span>
+<span class="font-label text-on-surface-variant text-[10px] uppercase tracking-widest mt-0.5">Primary Reasoning</span>
+</div>
+</div>
+<div class="relative z-10 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</button>
+<!-- Inactive Item: GPT-4o -->
+<button class="w-full flex items-center justify-between p-4 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors text-left group border border-transparent">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline font-medium text-on-surface text-base">GPT-4o</span>
+<span class="font-label text-on-surface-variant text-[10px] uppercase tracking-widest mt-0.5">High Speed / Vision</span>
+</div>
+</div>
+</button>
+<!-- Inactive Item: DeepSeek Coder -->
+<button class="w-full flex items-center justify-between p-4 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors text-left group border border-transparent">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">code</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline font-medium text-on-surface text-base">DeepSeek Coder</span>
+<span class="font-label text-on-surface-variant text-[10px] uppercase tracking-widest mt-0.5">Development Focused</span>
+</div>
+</div>
+</button>
+<!-- Inactive Item: Local Llama 3 -->
+<button class="w-full flex items-center justify-between p-4 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors text-left group border border-transparent">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">dns</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline font-medium text-on-surface text-base">Local Llama 3</span>
+<span class="font-label text-on-surface-variant text-[10px] uppercase tracking-widest mt-0.5">Secure Edge Inference</span>
+</div>
+</div>
+<div class="flex items-center justify-center px-2 py-1 bg-surface-container-highest rounded text-on-surface-variant font-label text-[10px]">
+                    OFFLINE
+                </div>
+</button>
+</div>
+</div>
+</body></html>

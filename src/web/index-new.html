@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#007acc">
+  <meta name="description" content="Control Cursor IDE from mobile - with AI models and project management">
+  
+  <title>Cursor Mobile</title>
+  
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen" style="display:none;">
+    <div class="login-container">
+      <h1>🔐 Cursor Mobile</h1>
+      <p>התחבר כדי להתחיל</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-password">סיסמה:</label>
+          <input type="password" id="login-password" placeholder="הזן סיסמה" required>
+        </div>
+        
+        <button type="submit" class="primary-btn">התחבר</button>
+      </form>
+      
+      <div id="login-error" class="error-message" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Main App (shown after login) -->
+  <div id="main-app" style="display:none;">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <h1>Cursor Mobile</h1>
+      <div class="top-bar-actions">
+        <button id="logout-btn" class="icon-btn" aria-label="Logout">🚪</button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="main-content">
+      <!-- Chat Tab -->
+      <div id="chat-tab" class="tab-content active">
+        <!-- Project & Model Selection -->
+        <div class="selection-bar">
+          <div class="form-group">
+            <label for="chat-project-select">פרויקט:</label>
+            <select id="chat-project-select">
+              <option value="">טוען...</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="chat-model-select">מודל AI:</label>
+            <select id="chat-model-select">
+              <option value="">טוען...</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="chat-messages">
+          <div class="welcome-message">
+            <h2>👋 ברוך הבא ל-Cursor Mobile!</h2>
+            <p>שלח prompt והAI יעזור לך בקוד</p>
+          </div>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="chat-input-container">
+          <textarea 
+            id="chat-prompt" 
+            placeholder="שלח prompt כאן... (לדוגמה: צור טופס התחברות)"
+            rows="3"
+          ></textarea>
+          <button id="chat-send-btn" class="send-btn">
+            <span class="send-icon">➤</span>
+            שלח
+          </button>
+        </div>
+      </div>
+
+      <!-- Projects Tab -->
+      <div id="projects-tab" class="tab-content">
+        <h2>📁 ניהול פרויקטים</h2>
+        
+        <button id="projects-refresh-btn" class="secondary-btn">רענן רשימה</button>
+        
+        <div id="projects-list" class="projects-list">
+          <p>טוען פרויקטים...</p>
+        </div>
+      </div>
+
+      <!-- Files Tab -->
+      <div id="files-tab" class="tab-content">
+        <div class="form-group">
+          <label for="files-project-select">פרויקט:</label>
+          <select id="files-project-select">
+            <option value="">בחר פרויקט...</option>
+          </select>
+        </div>
+        
+        <button id="files-refresh-btn" class="secondary-btn">רענן קבצים</button>
+        
+        <div id="files-list-container">
+          <table id="files-list" class="files-table">
+            <thead>
+              <tr>
+                <th>שם</th>
+                <th>גודל</th>
+                <th>תאריך</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        
+        <div id="file-viewer" style="display:none;">
+          <div class="file-header">
+            <span id="file-path"></span>
+            <div class="file-actions">
+              <button id="file-close-btn" class="secondary-btn">סגור</button>
+            </div>
+          </div>
+          <pre id="file-content" class="output-box"></pre>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="settings-tab" class="tab-content">
+        <h2>⚙️ הגדרות</h2>
+        
+        <div id="server-info">
+          <h3>מידע שרת</h3>
+          <div id="server-status"></div>
+        </div>
+        
+        <hr>
+        
+        <div class="tailscale-help">
+          <h3>📡 Tailscale</h3>
+          <p>אתה מחובר דרך Tailscale!</p>
+          <p>כתובת: <code>noam.tailf4f5e8.ts.net:8765</code></p>
+        </div>
+        
+        <hr>
+        
+        <button id="logout-settings-btn" class="secondary-btn">התנתק</button>
+      </div>
+    </main>
+
+    <!-- Bottom Tab Bar -->
+    <nav class="bottom-tabs">
+      <button class="tab-btn active" data-tab="chat">
+        <span class="tab-icon">💬</span>
+        <span class="tab-label">צ'אט</span>
+      </button>
+      <button class="tab-btn" data-tab="projects">
+        <span class="tab-icon">📁</span>
+        <span class="tab-label">פרויקטים</span>
+      </button>
+      <button class="tab-btn" data-tab="files">
+        <span class="tab-icon">📄</span>
+        <span class="tab-label">קבצים</span>
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">הגדרות</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" style="display:none;">
+    <div class="spinner"></div>
+    <p>טוען...</p>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
+

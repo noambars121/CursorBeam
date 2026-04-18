@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Confirm Reversion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;family=Space+Grotesk:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#98cbff",
+                    "on-primary-fixed": "#001d33",
+                    "tertiary-container": "#2db263",
+                    "primary-container": "#00a3ff",
+                    "on-surface-variant": "#bec7d4",
+                    "surface-dim": "#131313",
+                    "surface-container-highest": "#353534",
+                    "secondary-container": "#474746",
+                    "on-primary": "#003354",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-container-low": "#1c1b1b",
+                    "tertiary-fixed-dim": "#61de8a",
+                    "on-background": "#e5e2e1",
+                    "on-tertiary-fixed-variant": "#005228",
+                    "tertiary": "#61de8a",
+                    "on-tertiary": "#00391a",
+                    "on-secondary-fixed-variant": "#474746",
+                    "outline-variant": "#3f4852",
+                    "on-secondary-container": "#b7b5b4",
+                    "on-error": "#690005",
+                    "on-surface": "#e5e2e1",
+                    "on-error-container": "#ffdad6",
+                    "primary": "#98cbff",
+                    "inverse-surface": "#e5e2e1",
+                    "surface-variant": "#353534",
+                    "secondary": "#c8c6c5",
+                    "outline": "#88919d",
+                    "on-primary-fixed-variant": "#004a77",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "inverse-on-surface": "#313030",
+                    "background": "#131313",
+                    "primary-fixed": "#cfe5ff",
+                    "inverse-primary": "#00629d",
+                    "error-container": "#93000a",
+                    "surface-container": "#201f1f",
+                    "secondary-fixed": "#e4e2e1",
+                    "tertiary-fixed": "#7efba4",
+                    "on-tertiary-fixed": "#00210c",
+                    "on-secondary": "#303030",
+                    "on-tertiary-container": "#003d1c",
+                    "on-primary-container": "#00375a",
+                    "error": "#ffb4ab",
+                    "surface-tint": "#98cbff",
+                    "surface-container-lowest": "#0e0e0e",
+                    "surface": "#131313",
+                    "secondary-fixed-dim": "#c8c6c5",
+                    "surface-bright": "#3a3939"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {},
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body antialiased min-h-screen flex flex-col items-center justify-end md:justify-center relative overflow-hidden">
+<!-- Ambient Background / Dimmer -->
+<div class="absolute inset-0 bg-surface-dim/80 backdrop-blur-sm z-0"></div>
+<!-- Background Context (Mock Terminal/Code View behind the modal) -->
+<div class="absolute inset-0 z-[-1] opacity-30 p-6 pointer-events-none">
+<div class="font-label text-xs text-on-surface-variant leading-relaxed">
+<p>&gt; initializing sync sequence...</p>
+<p>&gt; connecting to cluster alpha-7...</p>
+<p>&gt; validating local manifest against remote state...</p>
+<p class="text-error">&gt; warning: local drift detected. uncommitted changes: 14 files.</p>
+<p>&gt; awaiting user confirmation...</p>
+</div>
+</div>
+<!-- Bottom Sheet / Modal Container -->
+<div class="relative z-10 w-full max-w-md bg-surface-container-high rounded-t-xl md:rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)] overflow-hidden outline outline-1 outline-outline-variant/15 flex flex-col mt-auto md:mt-0">
+<!-- Handle for mobile bottom sheet feel -->
+<div class="w-full flex justify-center pt-4 pb-2 md:hidden">
+<div class="w-10 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Danger Header Area -->
+<div class="p-6 pb-0 flex flex-col items-center text-center">
+<!-- Warning Icon Container with soft glow -->
+<div class="relative w-16 h-16 mb-4 flex items-center justify-center">
+<div class="absolute inset-0 bg-error/10 rounded-full blur-[12px]"></div>
+<div class="relative w-12 h-12 bg-error-container/20 rounded-full border border-error/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-error text-3xl" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+</div>
+<h2 class="font-headline font-bold text-2xl text-on-surface mb-2">Confirm Reversion</h2>
+<p class="font-body text-base text-on-surface-variant leading-relaxed px-2">
+                This will revert your local workspace and files to the state of this message. <span class="text-error font-medium">This action is destructive and cannot be undone.</span>
+</p>
+</div>
+<!-- Technical Metadata (Contextualizing the action) -->
+<div class="px-6 py-6 mt-4">
+<div class="bg-surface-container-lowest rounded-lg p-4 outline outline-1 outline-outline-variant/15">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label text-xs text-on-surface-variant uppercase tracking-wider">Target State</span>
+<span class="font-label text-xs text-primary font-medium">commit_a7f9b2</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label text-xs text-on-surface-variant uppercase tracking-wider">Files Affected</span>
+<span class="font-label text-xs text-error font-medium">14 files overwritten</span>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="p-6 pt-2 flex flex-col gap-3">
+<button class="w-full py-4 bg-gradient-to-b from-error to-error-container text-on-error font-headline font-bold text-base rounded-lg shadow-[0_4px_12px_rgba(255,180,171,0.2)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 outline outline-1 outline-white/20">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">history</span>
+                Confirm &amp; Revert
+            </button>
+<button class="w-full py-4 bg-surface-container-lowest text-on-surface font-body font-medium text-base rounded-lg hover:bg-surface-container-low transition-colors outline outline-1 outline-outline-variant/30">
+                Cancel
+            </button>
+</div>
+</div>
+</body></html>

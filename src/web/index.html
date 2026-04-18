@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#007acc">
+  <meta name="description" content="Control Cursor IDE from mobile - with AI models and project management">
+  
+  <title>Cursor Mobile</title>
+  
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen" style="display:none;">
+    <div class="login-container">
+      <h1>🔐 Cursor Mobile</h1>
+      <p>התחבר כדי להתחיל</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-password">סיסמה:</label>
+          <input type="password" id="login-password" placeholder="הזן סיסמה" autocomplete="current-password" required>
+        </div>
+        
+        <button type="submit" class="primary-btn">התחבר</button>
+      </form>
+      
+      <div id="login-error" class="error-message" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Main App (shown after login) -->
+  <div id="main-app" style="display:none;">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <h1>Cursor Mobile</h1>
+      <div class="top-bar-actions">
+        <button id="logout-btn" class="icon-btn" aria-label="Logout">🚪</button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="main-content">
+      <!-- Chat Tab -->
+      <div id="chat-tab" class="tab-content active">
+        <!-- Remote Chat (UIA) Section -->
+        <div class="remote-chat-section">
+          <div class="section-header">
+            <h3>💬 Cursor Chat (UIA)</h3>
+            <div class="status-indicators">
+              <span id="uia-status" class="status-badge">בדיקה...</span>
+              <button id="rchat-refresh-btn" class="icon-btn" aria-label="Refresh">🔄</button>
+            </div>
+          </div>
+          
+          <!-- Project & Model Selection for Remote Chat -->
+          <div class="selection-bar">
+            <div class="form-group">
+              <label for="rchat-project-select">📁 פרויקט:</label>
+              <select id="rchat-project-select">
+                <option value="">טוען...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="rchat-model-select">🤖 מודל:</label>
+              <select id="rchat-model-select">
+                <option value="">טוען...</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Remote Chat Transcript -->
+          <div id="rchat-messages" class="rchat-messages">
+            <div class="rchat-welcome">
+              <p>📱 שלח הודעה לצ'אט של Cursor</p>
+              <p class="small-text">אוטומציה של Cursor דרך Windows UI Automation</p>
+            </div>
+          </div>
+          
+          <!-- Remote Chat Input -->
+          <div class="rchat-input-container">
+            <div class="rchat-input-actions">
+              <button id="rchat-image-btn" class="icon-btn" aria-label="Upload Image" title="העלה תמונה">
+                📷
+              </button>
+              <input type="file" id="rchat-image-input" accept="image/*" style="display: none;">
+            </div>
+            <textarea 
+              id="rchat-input" 
+              placeholder="שלח הודעה לצ'אט הימני של Cursor מכל מקום"
+              rows="2"
+            ></textarea>
+            <div class="rchat-send-actions">
+              <button id="rchat-cancel-btn" class="icon-btn cancel-btn" style="display: none;" title="בטל הודעה">
+                ❌
+              </button>
+              <button id="rchat-send-btn" class="send-btn">
+                <span class="send-icon">➤</span>
+                שלח
+              </button>
+            </div>
+          </div>
+          
+          <!-- Image Preview -->
+          <div id="rchat-image-preview" class="image-preview" style="display: none;">
+            <img id="rchat-preview-img" src="" alt="Preview">
+            <button id="rchat-remove-image" class="remove-image-btn">✕</button>
+          </div>
+        </div>
+        
+        <!-- Regular Chat Section - HIDDEN -->
+        <div class="regular-chat-section" style="display: none;">
+          <h3>🤖 Agent Chat (Server)</h3>
+          
+          <!-- Project & Model Selection -->
+          <div class="selection-bar">
+            <div class="form-group">
+              <label for="chat-project-select">פרויקט:</label>
+              <select id="chat-project-select">
+                <option value="">טוען...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="chat-model-select">מודל AI:</label>
+              <select id="chat-model-select">
+                <option value="">טוען...</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Chat Messages -->
+          <div id="chat-messages" class="chat-messages">
+            <div class="welcome-message">
+              <h2>👋 ברוך הבא ל-Cursor Mobile!</h2>
+              <p>שלח prompt והAI יעזור לך בקוד</p>
+            </div>
+          </div>
+          
+          <!-- Chat Input -->
+          <div class="chat-input-container">
+            <textarea 
+              id="chat-prompt" 
+              placeholder="שלח prompt כאן... (לדוגמה: צור טופס התחברות)"
+              rows="3"
+            ></textarea>
+            <button id="chat-send-btn" class="send-btn">
+              <span class="send-icon">➤</span>
+              שלח
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects Tab -->
+      <div id="projects-tab" class="tab-content">
+        <h2>📁 ניהול פרויקטים</h2>
+        
+        <button id="projects-refresh-btn" class="secondary-btn">רענן רשימה</button>
+        
+        <div id="projects-list" class="projects-list">
+          <p>טוען פרויקטים...</p>
+        </div>
+      </div>
+
+      <!-- Files Tab -->
+      <div id="files-tab" class="tab-content">
+        <div class="files-container">
+          <!-- File Tree Panel -->
+          <div class="file-tree-panel">
+            <div class="file-tree-header">
+              <h3>📁 קבצים</h3>
+              <button onclick="loadFilesTree()" class="icon-btn" title="רענן">🔄</button>
+            </div>
+            <div id="file-tree" class="file-tree">
+              <p style="padding: 1rem; text-align: center; color: #999;">
+                בחר פרויקט בטאב הצאט
+              </p>
+            </div>
+          </div>
+          
+          <!-- File Editor Panel -->
+          <div class="file-editor-panel">
+            <div class="file-editor-header">
+              <span id="current-file-name">אין קובץ פתוח</span>
+              <div style="display: flex; gap: 0.5rem;">
+                <button id="save-file-btn" onclick="saveCurrentFile()" class="primary-btn" style="display:none">💾 שמור</button>
+                <button id="close-file-btn" onclick="closeFile()" class="secondary-btn" style="display:none">✕ סגור</button>
+              </div>
+            </div>
+            <textarea id="file-editor" placeholder="בחר קובץ מהרשימה לעריכה..." disabled></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="settings-tab" class="tab-content">
+        <h2>⚙️ הגדרות</h2>
+        
+        <div id="server-info">
+          <h3>מידע שרת</h3>
+          <div id="server-status"></div>
+        </div>
+        
+        <hr>
+        
+        <div class="tailscale-help">
+          <h3>📡 Tailscale</h3>
+          <p>אתה מחובר דרך Tailscale!</p>
+          <p>כתובת: <code>noam.tailf4f5e8.ts.net:8765</code></p>
+        </div>
+        
+        <hr>
+        
+        <button id="logout-settings-btn" class="secondary-btn">התנתק</button>
+      </div>
+    </main>
+
+    <!-- Bottom Tab Bar -->
+    <nav class="bottom-tabs">
+      <button class="tab-btn active" data-tab="chat">
+        <span class="tab-icon">💬</span>
+        <span class="tab-label">צ'אט</span>
+      </button>
+      <button class="tab-btn" data-tab="projects">
+        <span class="tab-icon">📁</span>
+        <span class="tab-label">פרויקטים</span>
+      </button>
+      <button class="tab-btn" data-tab="files">
+        <span class="tab-icon">📄</span>
+        <span class="tab-label">קבצים</span>
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">הגדרות</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" style="display:none;">
+    <div class="spinner"></div>
+    <p>טוען...</p>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,72 @@
+{
+  "name": "cursor-mobile",
+  "version": "1.0.0",
+  "description": "Control Cursor IDE features from mobile - Agent, Plan Mode, Files, Git, and more",
+  "main": "dist/server/index.js",
+  "type": "module",
+  "scripts": {
+    "setup": "powershell -ExecutionPolicy Bypass -File setup.ps1",
+    "install": "powershell -ExecutionPolicy Bypass -File install.ps1",
+    "start": "npm run v2:start",
+    "v2:start": "npx tsx v2/start.ts",
+    "v2:relay": "npx tsx v2/relay-server.ts",
+    "check": "tsc --noEmit",
+    "dev": "nodemon --watch src --ext ts,js,html,css --exec \"node --loader ts-node/esm src/server/index.ts\"",
+    "build": "tsc -p . && npm run copy-web",
+    "copy-web": "node -e \"import('fs').then(fs => fs.cpSync('src/web', 'dist/web', {recursive: true}))\"",
+    "status": "node -e \"fetch('http://localhost:8765/api/status').then(r=>r.json()).then(console.log).catch(e=>console.error('Server not running'))\"",
+    "host:build": "dotnet build host/CursorChatHost/CursorChatHost.csproj -c Release",
+    "host:run": ".\\host\\CursorChatHost\\bin\\Release\\net8.0\\CursorChatHost.exe",
+    "host:install": "powershell -ExecutionPolicy Bypass -File scripts/install-chat-host.ps1",
+    "v2:poc": "npx tsx v2/cdp-poc.ts",
+    "v2:extract": "npx tsx v2/poc-extract.ts",
+    "v2:inject": "npx tsx v2/poc-inject.ts",
+    "v2:test:edit": "node --import tsx/esm --test-force-exit --test v2/edit-flow.test.ts"
+  },
+  "keywords": [
+    "cursor",
+    "mobile",
+    "pwa",
+    "agent",
+    "tailscale"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@types/ws": "^8.18.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "fast-glob": "^3.3.2",
+    "helmet": "^7.1.0",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "web-push": "^3.6.7",
+    "ws": "^8.18.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/js-yaml": "^4.0.9",
+    "@types/jsdom": "^28.0.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.10.6",
+    "@types/web-push": "^3.6.4",
+    "jsdom": "^29.0.2",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
+}
