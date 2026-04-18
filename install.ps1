@@ -62,35 +62,48 @@ function Install-Tailscale {
         Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing -ErrorAction Stop
         $ProgressPreference = 'Continue'
         
-        Write-Log "Installing Tailscale (this may take a minute)..." "INFO"
+        Write-Log "Tailscale downloaded successfully" "SUCCESS"
+        Write-Log "Launching Tailscale installer (requires admin)..." "INFO"
         
-        # Run installer with proper arguments
-        $process = Start-Process -FilePath $installerPath -ArgumentList "/quiet","/norestart" -Wait -PassThru -ErrorAction Stop
+        # Run installer with elevated privileges and interactive mode (not /quiet)
+        # This allows the installer to request admin rights properly
+        $process = Start-Process -FilePath $installerPath `
+                                  -ArgumentList "/install","/norestart" `
+                                  -Verb RunAs `
+                                  -Wait `
+                                  -PassThru `
+                                  -ErrorAction Stop
         
         if ($process.ExitCode -eq 0) {
             Write-Log "Tailscale installed successfully!" "SUCCESS"
             
-            # Wait a moment for service to start
-            Start-Sleep -Seconds 3
+            # Wait for service to start
+            Start-Sleep -Seconds 5
             
-            # Try to refresh environment variables
+            # Refresh environment variables
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             
             return $true
+        } elseif ($process.ExitCode -eq 1602) {
+            # User cancelled the installation
+            Write-Log "Tailscale installation cancelled by user" "WARNING"
+            return $false
         } else {
-            Write-Log "Tailscale installer returned exit code: $($process.ExitCode)" "WARNING"
+            Write-Log "Tailscale installer exit code: $($process.ExitCode)" "WARNING"
             return $false
         }
     } catch {
         Write-Log "Error installing Tailscale: $($_.Exception.Message)" "ERROR"
-        return $false
-    } finally {
-        # Cleanup
+        
+        # If the file was downloaded successfully, offer to open it manually
         if (Test-Path $installerPath) {
-            try {
-                Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
-            } catch { }
+            Write-Host ""
+            Write-Host "The installer was downloaded to: $installerPath" -ForegroundColor Yellow
+            Write-Host "You can run it manually after this setup completes." -ForegroundColor Yellow
+            Write-Host ""
         }
+        
+        return $false
     }
 }
 
