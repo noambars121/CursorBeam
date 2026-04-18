@@ -21,6 +21,7 @@
 
 [Features](#features) •
 [Quick Start](#quick-start) •
+[Getting Started Guide](GETTING-STARTED.md) •
 [Documentation](#documentation) •
 [Architecture](#architecture) •
 [Contributing](#contributing)
