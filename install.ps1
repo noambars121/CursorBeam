@@ -57,14 +57,40 @@ function Install-Tailscale {
     $installerPath = "$env:TEMP\tailscale-setup.exe"
     
     try {
-        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
-        Write-Log "Installing Tailscale..." "INFO"
-        Start-Process -FilePath $installerPath -ArgumentList "/quiet" -Wait
-        Write-Log "Tailscale installed successfully!" "SUCCESS"
-        return $true
+        # Download with progress
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing -ErrorAction Stop
+        $ProgressPreference = 'Continue'
+        
+        Write-Log "Installing Tailscale (this may take a minute)..." "INFO"
+        
+        # Run installer with proper arguments
+        $process = Start-Process -FilePath $installerPath -ArgumentList "/quiet","/norestart" -Wait -PassThru -ErrorAction Stop
+        
+        if ($process.ExitCode -eq 0) {
+            Write-Log "Tailscale installed successfully!" "SUCCESS"
+            
+            # Wait a moment for service to start
+            Start-Sleep -Seconds 3
+            
+            # Try to refresh environment variables
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            
+            return $true
+        } else {
+            Write-Log "Tailscale installer returned exit code: $($process.ExitCode)" "WARNING"
+            return $false
+        }
     } catch {
-        Write-Log "Error installing Tailscale: $_" "ERROR"
+        Write-Log "Error installing Tailscale: $($_.Exception.Message)" "ERROR"
         return $false
+    } finally {
+        # Cleanup
+        if (Test-Path $installerPath) {
+            try {
+                Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
+            } catch { }
+        }
     }
 }
 
@@ -264,16 +290,27 @@ function Show-SetupForm {
 
     # Tailscale option
     $tailscaleCheck = New-Object System.Windows.Forms.CheckBox
-    $tailscaleCheck.Text = "Install Tailscale (secure remote access)"
+    $tailscaleCheck.Text = "Install Tailscale (secure remote access - recommended)"
     $tailscaleCheck.Location = New-Object System.Drawing.Point(40, $y)
-    $tailscaleCheck.Size = New-Object System.Drawing.Size(520, 25)
+    $tailscaleCheck.Size = New-Object System.Drawing.Size(420, 25)
     $tailscaleCheck.Checked = $true
     $form.Controls.Add($tailscaleCheck)
+    
+    $tailscaleManualBtn = New-Object System.Windows.Forms.Button
+    $tailscaleManualBtn.Text = "Manual Install"
+    $tailscaleManualBtn.Location = New-Object System.Drawing.Point(470, $y)
+    $tailscaleManualBtn.Size = New-Object System.Drawing.Size(90, 25)
+    $tailscaleManualBtn.FlatStyle = "Flat"
+    $tailscaleManualBtn.Add_Click({
+        Start-Process "https://tailscale.com/download/windows"
+        Show-MessageBox "Opening Tailscale download page in your browser.`n`nAfter installing Tailscale, you can uncheck the install option here." "Manual Installation" -Icon Information
+    })
+    $form.Controls.Add($tailscaleManualBtn)
 
     $y += 30
 
     $tailscaleInfo = New-Object System.Windows.Forms.Label
-    $tailscaleInfo.Text = "Tailscale enables secure access from anywhere without port forwarding."
+    $tailscaleInfo.Text = "Tailscale enables secure access from anywhere without port forwarding. Free for personal use."
     $tailscaleInfo.Location = New-Object System.Drawing.Point(40, $y)
     $tailscaleInfo.Size = New-Object System.Drawing.Size(520, 35)
     $tailscaleInfo.ForeColor = [System.Drawing.Color]::FromArgb(0, 90, 158)
@@ -442,9 +479,22 @@ if ($script:InstallTailscale) {
     if (Test-TailscaleInstalled) {
         Write-Log "Tailscale already installed ✓" "SUCCESS"
     } else {
+        Write-Log "Installing Tailscale (requires administrator privileges)..."
         $tsResult = Install-Tailscale
-        if (-not $tsResult) {
-            Show-MessageBox "Tailscale installation failed.`n`nYou can install it manually from: https://tailscale.com/download" "Warning" -Icon Warning
+        if ($tsResult) {
+            Write-Log "Tailscale installed successfully ✓" "SUCCESS"
+            Write-Host ""
+            Write-Host "NOTE: To use Tailscale, you need to:" -ForegroundColor Yellow
+            Write-Host "1. Open Tailscale from the system tray (near the clock)" -ForegroundColor Yellow
+            Write-Host "2. Click 'Log in' and authenticate with your account" -ForegroundColor Yellow
+            Write-Host "3. Install Tailscale on your phone using the same account" -ForegroundColor Yellow
+            Write-Host ""
+        } else {
+            Write-Log "Tailscale installation failed" "WARNING"
+            $manualInstall = Show-MessageBox "Tailscale installation failed.`n`nWould you like to open the download page to install manually?" "Tailscale Installation" -Buttons YesNo -Icon Question
+            if ($manualInstall -eq "Yes") {
+                Start-Process "https://tailscale.com/download/windows"
+            }
         }
     }
 }
