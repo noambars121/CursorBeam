@@ -4635,6 +4635,95 @@ $retryCheckBtn.addEventListener('click', function() {
   showOffline();
 });
 
+// System Status Panel Functions
+function openSystemStatus() {
+  var $statusOverlay = $('status-overlay');
+  $statusOverlay.style.display = 'flex';
+  refreshSystemStatus();
+}
+
+function closeSystemStatus(event) {
+  if (event && event.target.id !== 'status-overlay') return;
+  $('status-overlay').style.display = 'none';
+}
+
+function refreshSystemStatus() {
+  var $supInd = $('status-supervisor-ind');
+  var $supText = $('status-supervisor-text');
+  var $relInd = $('status-relay-ind');
+  var $relText = $('status-relay-text');
+  var $curInd = $('status-cursor-ind');
+  var $curText = $('status-cursor-text');
+  var $actions = $('status-actions');
+  var $startRelayBtn = $('status-start-relay-btn');
+  var $restartRelayBtn = $('status-restart-relay-btn');
+  var $help = $('status-help');
+  
+  // Reset
+  $supText.textContent = 'Checking...';
+  $relText.textContent = 'Checking...';
+  $curText.textContent = 'Checking...';
+  $actions.style.display = 'none';
+  $help.style.display = 'none';
+  
+  checkSystemStatus(function(status) {
+    // Supervisor
+    $supInd.style.background = status.supervisor ? 'var(--green)' : 'var(--red)';
+    $supText.textContent = status.supervisor ? 'Running' : 'Not found';
+    
+    // Relay
+    $relInd.style.background = status.relay ? 'var(--green)' : 'var(--red)';
+    $relText.textContent = status.relay ? 'Running' : 'Stopped';
+    
+    // Cursor
+    $curInd.style.background = status.cursor ? 'var(--green)' : 'var(--text-tertiary)';
+    $curText.textContent = status.cursor ? 'Running' : 'Not detected';
+    
+    // Actions and help
+    $actions.style.display = 'block';
+    
+    if (!status.supervisor) {
+      $help.textContent = 'Supervisor service not found. Make sure CursorBeam is installed as a Windows Service or start the supervisor manually: npm run supervisor';
+      $help.style.display = 'block';
+    } else if (!status.cursor) {
+      $startRelayBtn.style.display = 'block';
+      $startRelayBtn.disabled = true;
+      $startRelayBtn.textContent = 'Start Cursor First';
+      $help.textContent = 'Launch Cursor using the "Cursor (CursorBeam)" shortcut on your desktop. The relay will start automatically.';
+      $help.style.display = 'block';
+    } else if (!status.relay) {
+      $startRelayBtn.style.display = 'block';
+      $startRelayBtn.disabled = false;
+      $startRelayBtn.textContent = 'Start Relay';
+    } else {
+      $restartRelayBtn.style.display = 'block';
+      $help.textContent = 'Everything is running! You can restart the relay if you experience connection issues.';
+      $help.style.display = 'block';
+    }
+  });
+}
+
+function doStartRelayFromStatus() {
+  var $btn = $('status-start-relay-btn');
+  $btn.disabled = true;
+  $btn.textContent = 'Starting...';
+  
+  fetch(SUPERVISOR_BASE + '/restart-relay', { method: 'POST' })
+    .then(function() {
+      $btn.textContent = 'Starting relay...';
+      setTimeout(function() {
+        refreshSystemStatus();
+        showToast('Relay started! Reconnecting...', 2000);
+        setTimeout(function() { location.reload(); }, 2000);
+      }, 3000);
+    })
+    .catch(function() {
+      $btn.disabled = false;
+      $btn.textContent = 'Start Relay';
+      showToast('Failed to start relay. Check supervisor.', 3000);
+    });
+}
+
 // ── Boot ──
 (function boot() {
   checkRelay(function(isUp) {

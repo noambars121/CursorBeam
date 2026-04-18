@@ -11,11 +11,11 @@
     "relay": "npx tsx src/relay-server.ts",
     "check": "tsc --noEmit",
     "test:edit": "npx tsx src/edit-flow.test.ts",
-    "service:install": "node service-install.js",
-    "service:uninstall": "node service-uninstall.js",
-    "service:start": "node service-control.js start",
-    "service:stop": "node service-control.js stop",
-    "service:restart": "node service-control.js restart"
+    "service:install": "node service-install.cjs",
+    "service:uninstall": "node service-uninstall.cjs",
+    "service:start": "node service-control.cjs start",
+    "service:stop": "node service-control.cjs stop",
+    "service:restart": "node service-control.cjs restart"
   },
   "keywords": [
     "cursor",
