@@ -210,7 +210,8 @@ npm start
 |----------|-------------|
 | ![](https://img.shields.io/badge/QUICKSTART-Hebrew-blue?style=flat-square) [QUICKSTART.md](QUICKSTART.md) | Fast setup guide (Hebrew) |
 | ![](https://img.shields.io/badge/INSTALL-English-green?style=flat-square) [INSTALL.md](INSTALL.md) | Detailed installation |
-| ![](https://img.shields.io/badge/TAILSCALE-Setup-purple?style=flat-square) [TAILSCALE-GUIDE.md](TAILSCALE-GUIDE.md) | Remote access setup |
+| ![](https://img.shields.io/badge/TAILSCALE-Installation-purple?style=flat-square) [INSTALL_TAILSCALE.md](INSTALL_TAILSCALE.md) | Tailscale setup guide |
+| ![](https://img.shields.io/badge/TAILSCALE-Usage-purple?style=flat-square) [TAILSCALE-GUIDE.md](TAILSCALE-GUIDE.md) | Remote access guide (Hebrew) |
 | ![](https://img.shields.io/badge/TROUBLESHOOTING-Help-orange?style=flat-square) [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Problem solving |
 | ![](https://img.shields.io/badge/FEATURES-Complete-yellow?style=flat-square) [FEATURES.md](FEATURES.md) | Full feature list |
 | ![](https://img.shields.io/badge/CONTRIBUTING-Guidelines-red?style=flat-square) [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
