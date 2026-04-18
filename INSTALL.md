@@ -137,9 +137,14 @@ Press `Ctrl+C` in the terminal.
 ### Scripts Reference
 
 ```powershell
-npm run setup          # Initial setup (run once)
-npm run v2:start       # Start server + Cursor
-npm run v2:relay       # Start relay only (if Cursor already running)
+npm run setup              # Initial setup (run once)
+npm start                  # Start server
+npm run relay              # Start relay only
+npm run service:install    # Install as Windows Service
+npm run service:uninstall  # Uninstall Windows Service
+npm run service:start      # Start service
+npm run service:stop       # Stop service
+npm run service:restart    # Restart service
 npm run check          # TypeScript type check
 ```
 

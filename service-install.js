@@ -23,8 +23,8 @@ if (!fs.existsSync(envPath)) {
 // Create the service object
 const svc = new Service({
   name: 'CursorBeam',
-  description: 'CursorBeam - Remote control Cursor IDE from mobile devices',
-  script: path.join(__dirname, 'src', 'start.ts'),
+  description: 'CursorBeam - Supervisor and relay server for remote Cursor IDE control',
+  script: path.join(__dirname, 'src', 'supervisor.ts'),
   nodeOptions: [
     '--import', 'tsx/esm'
   ],
@@ -32,6 +32,10 @@ const svc = new Service({
     {
       name: "NODE_ENV",
       value: "production"
+    },
+    {
+      name: "V2_LAN",
+      value: "1"
     }
   ],
   workingDirectory: __dirname,

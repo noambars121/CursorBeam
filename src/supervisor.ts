@@ -200,4 +200,27 @@ const server = http.createServer(async (req, res) => {
 // Bind to all interfaces for LAN/Tailscale access
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Supervisor listening on 0.0.0.0:${PORT}`);
+  
+  // Auto-start relay when supervisor starts
+  setTimeout(async () => {
+    const isCursorRunning = checkCursorRunning();
+    const isRelayRunning = await checkRelayRunning();
+    
+    if (isCursorRunning && !isRelayRunning) {
+      console.log('Cursor detected, starting relay...');
+      restartRelayOnly();
+    } else if (!isCursorRunning) {
+      console.log('Waiting for Cursor to start (use "Cursor (CursorBeam)" shortcut)...');
+      // Check periodically for Cursor
+      const checkInterval = setInterval(async () => {
+        if (checkCursorRunning() && !(await checkRelayRunning())) {
+          console.log('Cursor detected, starting relay...');
+          restartRelayOnly();
+          clearInterval(checkInterval);
+        }
+      }, 5000);
+    } else {
+      console.log('Relay already running');
+    }
+  }, 3000);
 });

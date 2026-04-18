@@ -2,10 +2,21 @@
 
 CursorBeam can be installed as a Windows Service (daemon) that runs in the background and starts automatically with Windows.
 
+## How It Works
+
+The service runs the **supervisor** which:
+1. Listens on port **9799** for control commands
+2. **Automatically detects** when you launch Cursor (via the "Cursor (CursorBeam)" shortcut)
+3. **Automatically starts the relay server** on port 9800 when Cursor is detected
+4. Keeps the relay running in the background
+
+> **Important**: You must launch Cursor using the **"Cursor (CursorBeam)"** desktop shortcut for the system to work!
+
 ## Benefits of Windows Service
 
-- **Auto-start on boot**: Starts automatically when Windows starts
+- **Auto-start on boot**: Supervisor starts automatically when Windows starts
 - **Background operation**: Runs silently without any visible windows
+- **Auto-detection**: Automatically starts relay when Cursor launches
 - **Auto-recovery**: Automatically restarts if it crashes
 - **Proper process management**: Can be managed through Windows Services
 - **System integration**: Better integration with Windows system features
@@ -36,6 +47,22 @@ npm run service:install
 ```
 
 **Note**: You must run PowerShell as Administrator!
+
+## Daily Usage
+
+Once the service is installed, using CursorBeam is simple:
+
+1. **Start Cursor**: Double-click the **"Cursor (CursorBeam)"** shortcut on your desktop
+   - This launches Cursor with CDP enabled
+   - The service automatically detects Cursor and starts the relay
+
+2. **Connect from Phone**: Open `http://YOUR-IP:9800` on your phone
+   - Login with your password
+   - Start controlling Cursor!
+
+3. **That's it!** The service handles everything else in the background
+
+> **Note**: The supervisor runs automatically in the background. You don't need to manually start anything except Cursor itself.
 
 ## Managing the Service
 
