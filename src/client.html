@@ -7,12 +7,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
+<meta http-equiv="Permissions-Policy" content="microphone=(self)">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <title>Cursor Remote</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<script type="module">
+  // Pre-load transformers.js for Whisper voice transcription
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+  window.transformersPipeline = pipeline;
+  window.transformersEnv = env;
+  // Use local cache (not session cache)
+  env.useBrowserCache = true;
+  env.allowLocalModels = false;
+</script>
 <style>
 
 
@@ -660,7 +670,7 @@ button:active:not(:disabled) {
   cursor: pointer;
 }
 
-#img-btn {
+#img-btn, #mic-btn {
   width: 32px;
   height: 32px;
   border-radius: 16px;
@@ -673,6 +683,24 @@ button:active:not(:disabled) {
   margin-bottom: 3px;
   margin-left: 4px;
   flex-shrink: 0;
+}
+#mic-btn {
+  font-size: 16px;
+  color: var(--accent);
+}
+#mic-btn.recording {
+  background: var(--red);
+  color: #fff;
+  animation: pulse-mic 1.5s ease-in-out infinite;
+}
+#mic-btn.processing {
+  background: var(--yellow);
+  color: #000;
+  pointer-events: none;
+}
+@keyframes pulse-mic {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }
 
 #prompt-input {
@@ -758,12 +786,35 @@ button:active:not(:disabled) {
   border-bottom: 0.5px solid rgba(255,255,255,0.1);
 }
 .panel-header h3, .revert-panel-header h3 { font-size: 17px; font-weight: 600; }
-.panel-close { color: var(--accent); font-size: 17px; font-weight: 400; }
+.panel-close { 
+  color: var(--accent); 
+  font-size: 28px; 
+  font-weight: 300; 
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+  padding: 8px 12px;
+  margin: -8px -4px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 #chat-panel-actions { display: flex; align-items: center; gap: 12px; }
 #new-chat-btn { color: var(--accent); font-size: 16px; font-weight: 400; }
 
-.panel-list { list-style: none; overflow-y: auto; padding: 0; margin: 0; }
+.panel-list { 
+  list-style: none; 
+  overflow-y: auto; 
+  padding: 0; 
+  margin: 0; 
+  user-select: none; 
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
 .panel-list li {
   padding: 18px 20px;
   border-bottom: 1px solid var(--bg);
@@ -772,9 +823,67 @@ button:active:not(:disabled) {
   display: flex;
   flex-direction: column;
   transition: background 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: pointer;
+}
+.panel-list li * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 .panel-list li:active { background: var(--surface-elevated); }
 .panel-list li.active { color: var(--accent); background: var(--surface-elevated); }
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border);
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--accent);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
 
 .proj-item-inner {
   display: flex;
@@ -851,9 +960,44 @@ button:active:not(:disabled) {
 #toast.show { opacity: 1; }
 
 /* TERMINAL */
-#terminal-view { display: none; flex: 1; flex-direction: column; overflow: hidden; background: #000; min-height: 0; }
-#terminal-output { flex: 1; overflow-y: auto; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; min-height: 0; }
+#terminal-view { display: none; flex: 1; flex-direction: column; overflow: hidden; background: #000; min-height: 0; position: relative; }
+#terminal-output { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 48px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; min-height: 0; }
 #terminal-status { padding: 8px 16px; font-size: 12px; color: var(--text-tertiary); background: var(--surface); border-top: 0.5px solid var(--border); flex-shrink: 0; }
+
+.term-copy-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  color: #c9d1d9;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+  opacity: 0.6;
+}
+
+.term-copy-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.term-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.term-copy-btn.copied {
+  background: rgba(46, 160, 67, 0.3);
+  color: #2ea043;
+}
 .term-tabs-bar {
   flex-shrink: 0;
   background: #121212;
@@ -1268,6 +1412,24 @@ button:active:not(:disabled) {
             <span style="color:var(--text-tertiary);">></span>
           </div>
         </li>
+        <li onclick="closeMenuPicker(); openVoiceLanguagePicker();">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <span>Voice Language</span>
+            <span id="menu-voice-lang-val" style="color:var(--text-tertiary); font-size:15px;">English</span>
+          </div>
+        </li>
+        <li onclick="closeMenuPicker(); openVoiceModelPicker();">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <span>Voice Model</span>
+            <span id="menu-voice-model-val" style="color:var(--text-tertiary); font-size:15px;">Base</span>
+          </div>
+        </li>
+        <li onclick="closeMenuPicker(); setupPushManually();">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <span>Notifications</span>
+            <span id="menu-notif-status" style="color:var(--text-tertiary); font-size:16px;">🔔</span>
+          </div>
+        </li>
         <li onclick="closeMenuPicker(); openSystemStatus();">
           <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
             <span>System Status</span>
@@ -1314,6 +1476,123 @@ button:active:not(:disabled) {
       <ul id="model-list" class="panel-list"><li style="color:var(--dim);padding:16px">Loading...</li></ul>
     </div>
   </div>
+
+  <div id="voice-model-overlay" class="overlay" onclick="closeVoiceModelPicker(event)">
+    <div id="voice-model-panel" class="panel">
+      <div class="panel-header">
+        <h3>Voice Model Quality</h3>
+        <button class="panel-close" onclick="closeVoiceModelPicker()">&times;</button>
+      </div>
+      <ul class="panel-list">
+        <li onclick="selectVoiceModel('tiny')">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start;">
+            <div style="flex:1;">
+              <div style="font-size:15px; font-weight:500;">Tiny</div>
+              <div style="font-size:13px; color:var(--text-tertiary); margin-top:2px;">⚡ Fast • ~40MB • Basic accuracy</div>
+            </div>
+            <span id="voice-model-check-tiny" style="display:none; color:var(--accent); margin-left:12px;">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceModel('base')">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start;">
+            <div style="flex:1;">
+              <div style="font-size:15px; font-weight:500;">Base (Recommended)</div>
+              <div style="font-size:13px; color:var(--text-tertiary); margin-top:2px;">⚖️ Balanced • ~142MB • Good for mobile</div>
+            </div>
+            <span id="voice-model-check-base" style="display:none; color:var(--accent); margin-left:12px;">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceModel('small')">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start;">
+            <div style="flex:1;">
+              <div style="font-size:15px; font-weight:500;">Small</div>
+              <div style="font-size:13px; color:var(--red); margin-top:2px;">⚠️ Heavy • ~244MB • May crash on mobile</div>
+            </div>
+            <span id="voice-model-check-small" style="display:none; color:var(--accent); margin-left:12px;">✓</span>
+          </div>
+        </li>
+      </ul>
+      <div style="padding:16px; background:rgba(255,180,171,0.1); margin:12px; border-radius:8px; font-size:13px; border-left:3px solid var(--red);">
+        <strong style="color:var(--red);">⚠️ Mobile Warning:</strong> Small model requires lots of RAM and may crash the app on phones. Base is recommended for best balance.
+      </div>
+    </div>
+  </div>
+
+  <div id="voice-lang-overlay" class="overlay" onclick="closeVoiceLanguagePicker(event)">
+    <div id="voice-lang-panel" class="panel">
+      <div class="panel-header">
+        <h3>Voice Language</h3>
+        <button class="panel-close" onclick="closeVoiceLanguagePicker()">&times;</button>
+      </div>
+      <ul id="voice-lang-list" class="panel-list">
+        <li onclick="selectVoiceLanguage('auto')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Auto-detect</span>
+            <span id="voice-lang-check-auto" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('he')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>עברית (Hebrew)</span>
+            <span id="voice-lang-check-he" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('en')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>English</span>
+            <span id="voice-lang-check-en" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('ar')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>العربية (Arabic)</span>
+            <span id="voice-lang-check-ar" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('es')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Español (Spanish)</span>
+            <span id="voice-lang-check-es" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('fr')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Français (French)</span>
+            <span id="voice-lang-check-fr" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('de')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Deutsch (German)</span>
+            <span id="voice-lang-check-de" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('ru')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>Русский (Russian)</span>
+            <span id="voice-lang-check-ru" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+        <li onclick="selectVoiceLanguage('zh')">
+          <div style="display:flex; justify-content:space-between; width:100%;">
+            <span>中文 (Chinese)</span>
+            <span id="voice-lang-check-zh" style="display:none; color:var(--accent);">✓</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="slash-commands-overlay" class="overlay" onclick="closeSlashCommandsMenu(event)">
+    <div id="slash-commands-panel" class="panel" style="max-height:50vh;">
+      <div class="panel-header">
+        <h3 id="slash-commands-title">💬 Commands</h3>
+        <button class="panel-close" onclick="closeSlashCommandsMenu()">&times;</button>
+      </div>
+      <ul id="slash-commands-list" class="panel-list"></ul>
+    </div>
+  </div>
+
 
   <div id="status-overlay" class="overlay" onclick="closeSystemStatus(event)">
     <div id="status-panel" class="panel" style="max-width:400px">
@@ -1377,6 +1656,14 @@ button:active:not(:disabled) {
         <div style="display: flex; align-items: flex-end; width: 100%;">
           <button id="img-btn" onclick="triggerImagePick()" title="Attach image">+</button>
           <input type="file" id="img-file-input" accept="image/*" onchange="handleImagePick(this)" style="display:none">
+          <button id="mic-btn" onclick="toggleRecording()" title="Voice input">
+            <svg id="mic-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </button>
           <textarea id="prompt-input" rows="1" placeholder="Message..."></textarea>
           <button id="send-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -1402,6 +1689,12 @@ button:active:not(:disabled) {
 
   <div id="terminal-view">
     <div id="terminal-output">Waiting for terminal data...</div>
+    <button id="term-copy-btn" class="term-copy-btn" title="Copy terminal output">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="5" width="8" height="9" rx="1"/>
+        <path d="M5 5V3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2"/>
+      </svg>
+    </button>
     <div id="terminal-status"><span class="term-meta" id="term-info">—</span></div>
     <div id="term-tabs-bar" class="term-tabs-bar is-hidden">
       <div class="term-tabs-label">Open Terminals</div>
@@ -1426,9 +1719,9 @@ button:active:not(:disabled) {
         <button type="button" id="term-send">Run</button>
       </div>
       <div id="term-composer-extras">
-        <button type="button" id="term-ctrl-c" class="term-extra-btn" title="עצור תהליך (SIGINT)">Ctrl+C</button>
+        <button type="button" id="term-ctrl-c" class="term-extra-btn" title="Stop process (SIGINT)">Ctrl+C</button>
         <button type="button" id="term-new" class="term-extra-btn" title="Opens new terminal in Cursor">New Terminal</button>
-        <button type="button" id="term-kill" class="term-extra-btn" title="Closes active terminal tab in Cursor">Close טרמינל</button>
+        <button type="button" id="term-kill" class="term-extra-btn" title="Closes active terminal tab in Cursor">Close Terminal</button>
       </div>
     </div>
   </div>
@@ -1496,7 +1789,7 @@ button:active:not(:disabled) {
         <input type="text" id="term-preset-edit-group" autocomplete="off" placeholder="e.g. Git">
       </div>
       <div class="term-presets-edit-field">
-        <label for="term-preset-edit-hint">רמז (אופציונלי)</label>
+        <label for="term-preset-edit-hint">Hint (optional)</label>
         <input type="text" id="term-preset-edit-hint" autocomplete="off">
       </div>
       <div class="term-presets-edit-field">
@@ -1547,6 +1840,13 @@ var wsAttempts = 0;
 var isSending = false;
 var lastSendCorrelation = null; // { sentAt, messageCountAtSend, promptPrefix }
 var serverActivityState = 'idle';
+var previousServerActivityState = 'idle';
+var notificationPermissionRequested = false;
+var respondingPollInterval = null;
+var respondingStartTime = null;
+var wasRespondingWhenHidden = false;
+var respondingStartedAt = null;
+var lastNotifiedMessageCount = 0;
 
 // Connection state machine — exactly one of:
 //   'connected' | 'reconnecting' | 'disconnected'
@@ -1685,13 +1985,193 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// ── Slash Commands ──
+var slashCommandsOverlay = $('slash-commands-overlay');
+var slashCommandsList = $('slash-commands-list');
+var availableCommands = [];
+var isSlashMenuOpen = false;
+var slashStartPosition = -1;
+
+// MCP Servers management (backend only, UI removed)
+var availableMcpServers = [];
+
+function loadSlashCommands() {
+  // Fetch available commands from server
+  fetch(BASE + '/commands', { 
+    headers: { 'Authorization': 'Bearer ' + TOKEN } 
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    // Remove duplicates by name
+    var seen = {};
+    var unique = [];
+    (data.commands || []).forEach(function(cmd) {
+      if (!seen[cmd.name]) {
+        seen[cmd.name] = true;
+        unique.push(cmd);
+      }
+    });
+    
+    availableCommands = unique;
+    console.log('[Slash] Loaded', availableCommands.length, 'unique slash commands (from', (data.commands || []).length, 'total):');
+    availableCommands.forEach(function(cmd, i) {
+      console.log('  ' + (i+1) + '.', cmd.name, '-', (cmd.description || '').substring(0, 50));
+    });
+  })
+  .catch(function(err) {
+    console.log('[Slash] Could not load slash commands:', err);
+    availableCommands = [];
+  });
+}
+
+function openSlashCommandsMenu(filterText) {
+  if (availableCommands.length === 0) {
+    showToast('Loading commands...');
+    loadSlashCommands();
+    return;
+  }
+  
+  console.log('[Slash] Opening menu with', availableCommands.length, 'total commands, filter:', filterText);
+  
+  var filtered = availableCommands;
+  if (filterText) {
+    var search = filterText.toLowerCase();
+    filtered = availableCommands.filter(function(cmd) {
+      return cmd.name.toLowerCase().includes(search) || 
+             (cmd.description && cmd.description.toLowerCase().includes(search));
+    });
+  }
+  
+  console.log('[Slash] Filtered to', filtered.length, 'commands');
+  
+  if (filtered.length === 0) {
+    closeSlashCommandsMenu();
+    return;
+  }
+  
+  // Update title with count
+  var title = document.getElementById('slash-commands-title');
+  if (title) {
+    title.textContent = '💬 Commands (' + filtered.length + '/' + availableCommands.length + ')';
+  }
+  
+  slashCommandsList.innerHTML = '';
+  
+  filtered.forEach(function(cmd) {
+    var li = document.createElement('li');
+    
+    var description = cmd.description || '';
+    if (description.length > 150) {
+      description = description.substring(0, 150) + '...';
+    }
+    
+    // Escape HTML to prevent rendering issues
+    var escapedName = cmd.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    var escapedDesc = description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
+    li.innerHTML = '<div style="display:flex; flex-direction:column; width:100%;">' +
+                   '<div style="font-size:16px; font-weight:500; color:var(--text);">/' + escapedName + '</div>' +
+                   (escapedDesc ? '<div style="font-size:13px; color:var(--text-tertiary); margin-top:4px; line-height:1.3;">' + escapedDesc + '</div>' : '') +
+                   '</div>';
+    
+    li.onclick = function() {
+      selectSlashCommand(cmd.name);
+    };
+    
+    slashCommandsList.appendChild(li);
+  });
+  
+  slashCommandsOverlay.classList.add('visible');
+  isSlashMenuOpen = true;
+}
+
+function closeSlashCommandsMenu(event) {
+  if (event && event.target.id !== 'slash-commands-overlay' && !event.target.classList.contains('panel-close')) return;
+  
+  slashCommandsOverlay.classList.remove('visible');
+  isSlashMenuOpen = false;
+  slashStartPosition = -1;
+}
+
+function selectSlashCommand(commandName) {
+  var currentText = $input.value;
+  var beforeSlash = currentText.substring(0, slashStartPosition);
+  var afterCommand = currentText.substring($input.selectionStart);
+  
+  $input.value = beforeSlash + '/' + commandName + ' ' + afterCommand;
+  
+  // Position cursor after the command
+  var cursorPos = beforeSlash.length + commandName.length + 2;
+  $input.setSelectionRange(cursorPos, cursorPos);
+  
+  closeSlashCommandsMenu();
+  $input.focus();
+  
+  // Trigger input event to resize textarea
+  $input.dispatchEvent(new Event('input'));
+}
+
+// ── MCP Servers Management ──
+// MCP functions removed from UI - backend only
+
 // ── Textarea ──
-$input.addEventListener('input', function() {
+$input.addEventListener('input', function(e) {
   $input.style.height = 'auto';
   $input.style.height = Math.min($input.scrollHeight, 120) + 'px';
+  
+  // Check for slash command trigger
+  var text = $input.value;
+  var cursorPos = $input.selectionStart;
+  
+  // Find if we're typing after a "/"
+  if (text.length > 0 && cursorPos > 0) {
+    // Look backward from cursor to find "/"
+    var searchStart = Math.max(0, cursorPos - 50); // Only search last 50 chars
+    var textBeforeCursor = text.substring(searchStart, cursorPos);
+    var lastSlashIndex = textBeforeCursor.lastIndexOf('/');
+    
+    if (lastSlashIndex !== -1) {
+      // Check if "/" is at start or after whitespace
+      var charBeforeSlash = lastSlashIndex > 0 ? textBeforeCursor[lastSlashIndex - 1] : ' ';
+      if (charBeforeSlash === ' ' || charBeforeSlash === '\n' || lastSlashIndex === 0) {
+        // We have a valid slash command trigger
+        slashStartPosition = searchStart + lastSlashIndex;
+        var afterSlash = textBeforeCursor.substring(lastSlashIndex + 1);
+        
+        // Check if there's a space after the slash (command already complete)
+        if (afterSlash.indexOf(' ') === -1 && afterSlash.indexOf('\n') === -1) {
+          openSlashCommandsMenu(afterSlash);
+          return;
+        }
+      }
+    }
+  }
+  
+  // If we get here and menu is open, close it
+  if (isSlashMenuOpen) {
+    closeSlashCommandsMenu();
+  }
 });
+
+// Auto-resize textarea based on content
+function autoResizeTextarea(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+}
+
+$input.addEventListener('input', function() {
+  autoResizeTextarea($input);
+});
+
 $input.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+  // Escape closes slash menu
+  if (e.key === 'Escape' && isSlashMenuOpen) {
+    e.preventDefault();
+    closeSlashCommandsMenu();
+  }
+  
+  // Enter is now just a line break (no sending)
+  // Only the Send button will send messages
 });
 
 // ── Auto-scroll tracking + load older messages in Cursor when user scrolls near top ──
@@ -1882,7 +2362,46 @@ function updateLoadHistoryBtn() {
 }
 
 function updateStatus(serverState, windowTitle) {
-  if (serverState) serverActivityState = serverState;
+  // Track state changes for notifications
+  if (serverState && serverState !== serverActivityState) {
+    previousServerActivityState = serverActivityState;
+    
+    // Track when responding started
+    if (serverState === 'responding' && previousServerActivityState !== 'responding') {
+      respondingStartTime = Date.now();
+    }
+    
+    // Send notification when finished responding
+    if (previousServerActivityState === 'responding' && serverState !== 'responding') {
+      var respondingDuration = respondingStartTime ? (Date.now() - respondingStartTime) : 0;
+      
+      // Only notify if was responding for at least 2 seconds
+      if (respondingDuration >= 2000) {
+        sendFinishedNotification();
+      }
+      
+      respondingStartTime = null;
+    }
+    
+    // Update state
+    serverActivityState = serverState;
+    
+    // Start polling when responding starts
+    if (serverActivityState === 'responding' && !respondingPollInterval) {
+      respondingPollInterval = setInterval(function() {
+        loadState();
+      }, 1500);
+    }
+    
+    // Stop polling when finished
+    if (serverActivityState !== 'responding' && respondingPollInterval) {
+      clearInterval(respondingPollInterval);
+      respondingPollInterval = null;
+    }
+  } else if (serverState) {
+    serverActivityState = serverState;
+  }
+  
   if (typeof windowTitle === 'string' && windowTitle.length > 0) lastWindowTitle = windowTitle;
   updateLoadHistoryBtn();
 
@@ -1896,7 +2415,7 @@ function updateStatus(serverState, windowTitle) {
   // suffix so the user can still see which project they were on.
   var titleText = windowTitle || lastWindowTitle || 'Cursor';
   $title.textContent = titleText.length > 25 ? titleText.substring(0,25)+'...' : titleText;
-  
+
   var statusText = conn === 'connected' ? resolveActivityLabel() : CONNECTION_LABELS[conn];
   if(conn === 'connected' && !isSending && serverActivityState !== 'responding' && serverActivityState !== 'waiting_for_approval' && serverActivityState !== 'creating_chat' && serverActivityState !== 'switching_chat') {
      statusText = 'Online';
@@ -1914,11 +2433,216 @@ function openMenuPicker() {
   $menuOverlay.classList.add('visible');
   $('menu-project-val').textContent = $projectBtn ? $projectBtn.textContent : '—';
   $('menu-model-val').textContent = currentModel || '—';
+  $('menu-voice-lang-val').textContent = langNames[currentVoiceLang] || currentVoiceLang;
+  $('menu-voice-model-val').textContent = modelNames[currentVoiceModel] || currentVoiceModel;
+  updateNotificationStatus();
 }
 function closeMenuPicker(e) {
   if (e && e.target !== $menuOverlay && !e.target.classList.contains('panel-close')) return;
   $menuOverlay.classList.remove('visible');
 }
+
+function updateNotificationStatus() {
+  var $status = $('menu-notif-status');
+  if (!$status) return;
+  
+  if (!('Notification' in window)) {
+    $status.textContent = 'Not supported';
+    $status.style.color = 'var(--text-tertiary)';
+    return;
+  }
+  
+  var perm = Notification.permission;
+  if (perm === 'granted') {
+    $status.textContent = '✅ Enabled';
+    $status.style.color = '#4ade80';
+  } else if (perm === 'denied') {
+    $status.textContent = '❌ Blocked';
+    $status.style.color = '#f87171';
+  } else {
+    $status.textContent = 'Click to enable';
+    $status.style.color = 'var(--accent)';
+  }
+}
+
+function testNotifications() {
+  console.log('[Notifications] testNotifications called');
+  
+  if (!('Notification' in window)) {
+    showToast('Notifications not supported', 3000);
+    return;
+  }
+  
+  var perm = Notification.permission;
+  console.log('[Notifications] Current permission:', perm);
+  
+  if (perm === 'granted') {
+    // Send test notification
+    try {
+      var notification = new Notification('Test Notification', {
+        body: 'Notifications are working!',
+        icon: '/icon-192.png',
+        badge: '/icon-96.png',
+        tag: 'test-notification'
+      });
+      
+      notification.onclick = function() {
+        window.focus();
+        notification.close();
+      };
+      
+      setTimeout(function() {
+        notification.close();
+      }, 5000);
+      
+      showToast('Test notification sent', 2000);
+      console.log('[Notifications] ✅ Test notification sent');
+    } catch (err) {
+      showToast('Failed to send notification', 3000);
+      console.error('[Notifications] ❌ Test failed:', err);
+    }
+  } else if (perm === 'denied') {
+    showToast('Notifications blocked. Enable in browser settings.', 4000);
+    console.log('[Notifications] ❌ Blocked - needs manual enable');
+  } else {
+    // Request permission
+    console.log('[Notifications] Requesting permission...');
+    Notification.requestPermission().then(function(result) {
+      console.log('[Notifications] Permission result:', result);
+      updateNotificationStatus();
+      
+      if (result === 'granted') {
+        showToast('Notifications enabled!', 2000);
+        // Send test notification
+        setTimeout(function() {
+          testNotifications();
+        }, 500);
+      } else if (result === 'denied') {
+        showToast('Notifications denied', 3000);
+      }
+    });
+  }
+}
+
+// Manual test: trigger notification on next return
+function testReturnNotification() {
+  lastNotifiedMessageCount = prevMsgs.length - 1;
+  showToast('🧪 Test armed! Exit and return to app.', 4000);
+}
+
+// Check push subscription status
+function checkPushStatus() {
+  console.log('[Push] Checking status...');
+  
+  var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  var hasPushManager = 'PushManager' in window;
+  var hasServiceWorker = 'serviceWorker' in navigator;
+  
+  // Check if service worker has pushManager
+  var swHasPushManager = false;
+  if (swRegistration && swRegistration.pushManager) {
+    swHasPushManager = true;
+  }
+  
+  fetch(BASE + '/push-status', {
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      console.log('[Push] Status:', data);
+      
+      var msg = '📊 Push Status\n\n' +
+        '• Server Subscriptions: ' + data.subscriptions + '\n' +
+        '• VAPID Config: ' + (data.vapidConfigured ? '✅' : '❌') + '\n' +
+        '• Standalone Mode: ' + (isStandalone ? '✅' : '❌ REQUIRED!') + '\n' +
+        '• PushManager API: ' + (hasPushManager ? '✅' : '❌') + '\n' +
+        '• ServiceWorker: ' + (hasServiceWorker ? '✅' : '❌') + '\n' +
+        '• SW.pushManager: ' + (swHasPushManager ? '✅' : '❌');
+      
+      if (!isStandalone) {
+        msg += '\n\n⚠️ Install to Home Screen:\nSafari → Share → Add to Home Screen';
+      }
+      
+      showToast(msg, 8000);
+    })
+    .catch(function(err) {
+      console.error('[Push] Status check failed:', err);
+      showToast('❌ Failed to check status: ' + err.message, 3000);
+    });
+}
+
+// Test server push (send push from server)
+function testServerPush() {
+  console.log('[Push] Testing server push...');
+  showToast('🚀 Sending test push from server...', 2000);
+  
+  fetch(BASE + '/push-test', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      console.log('[Push] Test result:', data);
+      if (data.ok) {
+        showToast('✅ ' + data.message + '\n\nNow exit the app!', 4000);
+      } else {
+        showToast('❌ ' + data.error, 3000);
+      }
+    })
+    .catch(function(err) {
+      console.error('[Push] Test failed:', err);
+      showToast('❌ Test failed: ' + err.message, 3000);
+    });
+}
+
+// Manual push setup (step-by-step with clear feedback)
+function setupPushManually() {
+  console.log('[Push] 🔔 Manual push setup started');
+  showToast('🔔 Starting push setup...', 2000);
+  
+  // Check current permission
+  var currentPermission = Notification.permission;
+  console.log('[Push] Current permission:', currentPermission);
+  
+  if (currentPermission === 'denied') {
+    showToast('❌ Notifications blocked!\n\nGo to Settings → Safari → [This Site] → Allow Notifications', 6000);
+    return;
+  }
+  
+  if (currentPermission === 'granted') {
+    console.log('[Push] Permission already granted, checking subscription...');
+    
+    if (pushSubscription) {
+      showToast('✅ Already subscribed!\n\nSubscriptions: 1', 3000);
+      return;
+    }
+    
+    // Permission granted but not subscribed - register now
+    showToast('✅ Permission OK\n🔄 Registering...', 2000);
+    registerServiceWorkerAndSubscribe();
+    return;
+  }
+  
+  // Permission is 'default' - need to request
+  console.log('[Push] Requesting notification permission...');
+  showToast('📱 Please allow notifications in the next prompt!', 3000);
+  
+  setTimeout(function() {
+    Notification.requestPermission().then(function(permission) {
+      console.log('[Push] Permission result:', permission);
+      
+      if (permission === 'granted') {
+        showToast('✅ Permission granted!\n🔄 Setting up push...', 2000);
+        registerServiceWorkerAndSubscribe();
+      } else if (permission === 'denied') {
+        showToast('❌ Permission denied\n\nGo to Settings → Safari → [This Site] → Allow Notifications', 6000);
+      } else {
+        showToast('⚠️ Permission not granted', 3000);
+      }
+    });
+  }, 500);
+}
+
 
 // ── Mode selector ──
 function renderMode(mode) {
@@ -2550,6 +3274,7 @@ var $chatView = $('chat-view');
 var $termView = $('terminal-view');
 var $termOutput = $('terminal-output');
 var $termInfo = $('term-info');
+var $termCopyBtn = $('term-copy-btn');
 
 function switchTab(tab) {
   activeTab = tab;
@@ -3301,6 +4026,204 @@ function doLogin() {
 }
 function showLoginErr(msg) { $loginErr.textContent = msg; $loginErr.style.display = 'block'; }
 
+// ── Service Worker & Push Notifications ──
+var swRegistration = null;
+var pushSubscription = null;
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+function registerServiceWorkerAndSubscribe() {
+  // Check if running as installed PWA (required for iOS push)
+  var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  console.log('[Push] 📱 Standalone mode:', isStandalone);
+  console.log('[Push] 📱 User agent:', navigator.userAgent.substring(0, 100));
+  
+  if (!('serviceWorker' in navigator)) {
+    console.log('[SW] ❌ Service Workers not supported');
+    showToast('❌ Service Workers not supported', 3000);
+    return;
+  }
+  
+  if (!('PushManager' in window)) {
+    console.log('[Push] ⚠️ PushManager not available');
+    if (!isStandalone) {
+      showToast('⚠️ Install app to Home Screen for push notifications', 5000);
+    } else {
+      showToast('❌ Push not supported on this device', 3000);
+    }
+    return;
+  }
+  
+  console.log('[Push] 🚀 Starting registration...');
+  
+  navigator.serviceWorker.register('/sw.js')
+    .then(function(registration) {
+      console.log('[SW] ✅ Registered');
+      swRegistration = registration;
+      return registration.ready;
+    })
+    .then(function(registration) {
+      console.log('[SW] ✅ Ready - requesting notification permission');
+      return Notification.requestPermission().then(function(permission) {
+        console.log('[Push] 🔔 Permission:', permission);
+        if (permission === 'granted') {
+          console.log('[Push] ✅ Permission granted - subscribing to push...');
+          return subscribeToPush(registration);
+        } else {
+          console.log('[Push] ❌ Permission denied');
+          showToast('❌ Notification permission denied', 3000);
+        }
+      });
+    })
+    .catch(function(err) {
+      console.error('[SW] ❌ Registration failed:', err);
+      showToast('❌ Registration failed: ' + err.message, 4000);
+    });
+}
+
+function subscribeToPush(registration) {
+  console.log('[Push] Starting subscription...');
+  console.log('[Push] Registration:', registration);
+  console.log('[Push] pushManager:', registration.pushManager);
+  
+  // Critical check: Does this registration have pushManager?
+  if (!registration.pushManager) {
+    console.error('[Push] ❌ pushManager is not available on this registration');
+    
+    var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    console.log('[Push] Standalone:', isStandalone);
+    
+    var errorMsg = '❌ Push not supported';
+    if (!isStandalone) {
+      errorMsg = '⚠️ Install app to Home Screen first!\n\nSafari → Share → Add to Home Screen';
+      showToast(errorMsg, 6000);
+    } else {
+      errorMsg = '❌ Push not supported on this iOS version\n\nRequires iOS 16.4+';
+      showToast(errorMsg, 5000);
+    }
+    
+    return Promise.reject(new Error('pushManager not available'));
+  }
+  
+  showToast('🔔 Setting up notifications...', 2000);
+  
+  // Get VAPID public key from server
+  return fetch(BASE + '/vapid-public-key', {
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  })
+    .then(function(r) { 
+      console.log('[Push] VAPID key response:', r.status);
+      return r.json(); 
+    })
+    .then(function(data) {
+      if (!data.publicKey) {
+        throw new Error('No public key received');
+      }
+      
+      var publicKey = data.publicKey;
+      console.log('[Push] Got VAPID public key:', publicKey.substring(0, 20) + '...');
+      
+      var applicationServerKey = urlBase64ToUint8Array(publicKey);
+      
+      console.log('[Push] Calling pushManager.subscribe...');
+      return registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      });
+    })
+    .then(function(subscription) {
+      console.log('[Push] ✅ Subscribed to push!');
+      console.log('[Push] Endpoint:', subscription.endpoint.substring(0, 50) + '...');
+      console.log('[Push] Full subscription:', JSON.stringify(subscription));
+      pushSubscription = subscription;
+      
+      showToast('✅ Push subscribed!\n🔄 Saving to server...', 2000);
+      
+      // Convert subscription to plain object (Safari compatibility)
+      var subscriptionObj = subscription.toJSON ? subscription.toJSON() : subscription;
+      console.log('[Push] Subscription object:', JSON.stringify(subscriptionObj));
+      
+      // Send subscription to server
+      console.log('[Push] 📤 Sending to:', BASE + '/push-subscribe');
+      return fetch(BASE + '/push-subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + TOKEN
+        },
+        body: JSON.stringify(subscriptionObj)
+      });
+    })
+    .then(function(r) { 
+      console.log('[Push] 📥 Server save response:', r.status, r.statusText);
+      if (!r.ok) {
+        throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+      }
+      return r.json(); 
+    })
+    .then(function(data) {
+      console.log('[Push] 📥 Server response data:', data);
+      if (data.ok) {
+        console.log('[Push] ✅ Subscription saved to server! Total:', data.total);
+        showToast('✅ Push ready! Subscriptions: ' + data.total, 3000);
+      } else {
+        console.error('[Push] ❌ Failed to save subscription:', data.error);
+        showToast('❌ Failed to save: ' + data.error, 3000);
+      }
+    })
+    .catch(function(err) {
+      console.error('[Push] ❌ Subscribe failed:', err);
+      console.error('[Push] ❌ Error name:', err.name);
+      console.error('[Push] ❌ Error message:', err.message);
+      console.error('[Push] ❌ Error stack:', err.stack);
+      
+      if (err.message !== 'pushManager not available') {
+        showToast('❌ Push setup failed:\n' + err.message, 5000);
+      }
+    });
+}
+
+function requestNotificationPermission() {
+  registerServiceWorkerAndSubscribe();
+}
+
+function sendFinishedNotification() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (!document.hidden) return;
+  
+  try {
+    var notification = new Notification('Cursor Finished', {
+      body: 'Response complete',
+      icon: '/icon-192.png',
+      badge: '/icon-96.png',
+      tag: 'cursor-finished',
+      renotify: true,
+      silent: false
+    });
+    
+    notification.onclick = function() {
+      window.focus();
+      notification.close();
+    };
+    
+    setTimeout(function() {
+      notification.close();
+    }, 10000);
+  } catch (err) {
+    console.error('[Notifications] Error:', err);
+  }
+}
+
 // ── App entry ──
 function enterApp() {
   $login.style.display = 'none';
@@ -3308,8 +4231,78 @@ function enterApp() {
   loadState();
   fetchProjects();
   fetchPresets();
+  loadVoiceLanguage();
+  loadVoiceModel();
+  loadSlashCommands();
   fetchChats();
   connectWs();
+
+  // Request notification permission
+  setTimeout(requestNotificationPermission, 2000);
+  
+  // iOS PWA Fix: Check for new messages when returning to app
+  var visibilityCheckCount = 0;
+  
+  // Check for new messages when returning to app
+  document.addEventListener('visibilitychange', function() {
+    console.log('[🔙 Visibility] Changed. Hidden:', document.hidden);
+    
+    if (!document.hidden) {
+      try {
+        var currentCount = prevMsgs.length;
+        console.log('[🔙 Return] Last:', lastNotifiedMessageCount, '| Current:', currentCount);
+        
+        // Reset if count decreased (chat switched or cleared)
+        if (currentCount < lastNotifiedMessageCount) {
+          console.log('[🔙 Return] ⏸️ Count decreased - resetting');
+          lastNotifiedMessageCount = currentCount;
+          return;
+        }
+        
+        // Send notification if there are new messages
+        if (currentCount > lastNotifiedMessageCount && lastNotifiedMessageCount > 0) {
+          console.log('[🔙 Return] ✅ NEW MESSAGES DETECTED! Sending notification...');
+          
+          try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              console.log('[🔙 Return] 🔔 Creating notification...');
+              var n = new Notification('Cursor Finished', {
+                body: 'New response available',
+                icon: '/icon-192.png',
+                badge: '/icon-96.png',
+                tag: 'cursor-return-' + currentCount,
+                requireInteraction: false
+              });
+              n.onclick = function() { window.focus(); n.close(); };
+              setTimeout(function() { n.close(); }, 8000);
+              console.log('[🔙 Return] 🔔 Notification created:', n);
+              
+              // Vibrate
+              if ('vibrate' in navigator) {
+                console.log('[🔙 Return] 📳 Vibrating...');
+                navigator.vibrate([200, 100, 200]);
+              }
+            } else {
+              console.log('[🔙 Return] ❌ Notification blocked. Permission:', Notification ? Notification.permission : 'N/A');
+            }
+          } catch(e) {
+            console.error('[🔙 Return] ❌ Notification error:', e);
+          }
+          
+          lastNotifiedMessageCount = currentCount;
+          console.log('[🔙 Return] Updated lastNotifiedMessageCount to:', lastNotifiedMessageCount);
+        } else if (lastNotifiedMessageCount === 0) {
+          console.log('[🔙 Return] 🆕 First time - initializing count');
+          lastNotifiedMessageCount = currentCount;
+        } else {
+          console.log('[🔙 Return] ⏸️ No new messages');
+        }
+      } catch(err) {
+        console.error('[🔙 Return] ❌ Visibility error:', err);
+      }
+    }
+  });
+
 }
 
 function loadState(done) {
@@ -3319,6 +4312,12 @@ function loadState(done) {
     return r.json();
   })  .then(function(data) {
     if (!data) return;
+    
+    // Initialize last notified count on first load
+    if (lastNotifiedMessageCount === 0) {
+      lastNotifiedMessageCount = data.messageCount || 0;
+    }
+    
     renderMessages(data.messages || []);
     renderActions(data.pendingActions || []);
     renderMode(data.currentMode || null);
@@ -3415,6 +4414,52 @@ document.addEventListener('visibilitychange', function() {
 
 // ── Send with correlation ──
 $send.addEventListener('click', doSend);
+
+// ── Copy terminal output ──
+$termCopyBtn.addEventListener('click', function() {
+  var text = $termOutput.textContent || '';
+  
+  // Copy to clipboard
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(function() {
+        // Visual feedback
+        $termCopyBtn.classList.add('copied');
+        showToast('Terminal output copied!');
+        
+        setTimeout(function() {
+          $termCopyBtn.classList.remove('copied');
+        }, 1500);
+      })
+      .catch(function(err) {
+        console.error('Failed to copy:', err);
+        showToast('Failed to copy');
+      });
+  } else {
+    // Fallback for older browsers
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+      document.execCommand('copy');
+      $termCopyBtn.classList.add('copied');
+      showToast('Terminal output copied!');
+      
+      setTimeout(function() {
+        $termCopyBtn.classList.remove('copied');
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      showToast('Failed to copy');
+    }
+    
+    document.body.removeChild(textarea);
+  }
+});
 
 /** Open Cursor's native edit flow for this human message (branch/continue dialog may appear). */
 function doEditMessageInCursor(flatIndex) {
@@ -4766,6 +5811,431 @@ function doStartRelayFromStatus() {
       $btn.disabled = false;
       $btn.textContent = 'Start Relay';
       showToast('Failed to start relay. Check supervisor.', 3000);
+    });
+}
+
+// ──────────────────────────────────────────────────────────
+// Voice Recording & Transcription (Whisper via transformers.js)
+// ──────────────────────────────────────────────────────────
+var mediaRecorder = null;
+var audioChunks = [];
+var whisperPipeline = null;
+var isRecording = false;
+var isProcessing = false;
+
+// Voice language and model preferences
+var currentVoiceLang = 'en'; // default to English
+var currentVoiceModel = 'base'; // default to base (small is too heavy for mobile)
+
+var langNames = {
+  'auto': 'Auto',
+  'he': 'עברית',
+  'en': 'English',
+  'ar': 'العربية',
+  'es': 'Español',
+  'fr': 'Français',
+  'de': 'Deutsch',
+  'ru': 'Русский',
+  'zh': '中文'
+};
+
+var modelNames = {
+  'tiny': 'Tiny',
+  'base': 'Base',
+  'small': 'Small'
+};
+
+var modelSizes = {
+  'tiny': '~40MB',
+  'base': '~142MB',
+  'small': '~244MB'
+};
+
+function openVoiceLanguagePicker() {
+  $('voice-lang-overlay').classList.add('visible');
+  updateVoiceLanguageCheckmarks();
+}
+
+function closeVoiceLanguagePicker(event) {
+  if (event && event.target.id !== 'voice-lang-overlay') return;
+  $('voice-lang-overlay').classList.remove('visible');
+}
+
+function updateVoiceLanguageCheckmarks() {
+  var langs = ['auto', 'he', 'en', 'ar', 'es', 'fr', 'de', 'ru', 'zh'];
+  langs.forEach(function(lang) {
+    var check = $('voice-lang-check-' + lang);
+    if (check) {
+      check.style.display = (lang === currentVoiceLang) ? 'inline' : 'none';
+    }
+  });
+}
+
+function selectVoiceLanguage(lang) {
+  currentVoiceLang = lang;
+  localStorage.setItem('voiceLanguage', lang);
+  console.log('Voice language saved:', lang);
+  
+  // Update menu display
+  var menuVal = $('menu-voice-lang-val');
+  if (menuVal) {
+    menuVal.textContent = langNames[lang] || lang;
+  }
+  
+  updateVoiceLanguageCheckmarks();
+  closeVoiceLanguagePicker();
+  showToast('Voice: ' + (langNames[lang] || lang), 1500);
+}
+
+function loadVoiceLanguage() {
+  var saved = localStorage.getItem('voiceLanguage');
+  if (saved) {
+    currentVoiceLang = saved;
+    console.log('Voice language loaded:', saved);
+  } else {
+    // Default to English
+    currentVoiceLang = 'en';
+    localStorage.setItem('voiceLanguage', 'en');
+    console.log('Voice language defaulted to English');
+  }
+  
+  // Update menu display
+  var menuVal = $('menu-voice-lang-val');
+  if (menuVal) {
+    menuVal.textContent = langNames[currentVoiceLang] || currentVoiceLang;
+  }
+}
+
+function getSelectedVoiceLanguage() {
+  return currentVoiceLang === 'auto' ? null : currentVoiceLang;
+}
+
+// Voice model selection
+function openVoiceModelPicker() {
+  $('voice-model-overlay').classList.add('visible');
+  updateVoiceModelCheckmarks();
+}
+
+function closeVoiceModelPicker(event) {
+  if (event && event.target.id !== 'voice-model-overlay') return;
+  $('voice-model-overlay').classList.remove('visible');
+}
+
+function updateVoiceModelCheckmarks() {
+  var models = ['tiny', 'base', 'small'];
+  models.forEach(function(model) {
+    var check = $('voice-model-check-' + model);
+    if (check) {
+      check.style.display = (model === currentVoiceModel) ? 'inline' : 'none';
+    }
+  });
+}
+
+function selectVoiceModel(model) {
+  // Warn if selecting Small on mobile
+  if (model === 'small') {
+    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      var confirmed = confirm(
+        '⚠️ WARNING: Small model requires lots of RAM.\n\n' +
+        'This may crash the app on mobile devices.\n\n' +
+        'Base model is recommended for phones.\n\n' +
+        'Continue anyway?'
+      );
+      if (!confirmed) {
+        return; // Cancel selection
+      }
+    }
+  }
+  
+  // Clear the cached pipeline to force reload with new model
+  whisperPipeline = null;
+  
+  currentVoiceModel = model;
+  localStorage.setItem('voiceModel', model);
+  console.log('Voice model changed to:', model);
+  
+  // Update menu display
+  var menuVal = $('menu-voice-model-val');
+  if (menuVal) {
+    menuVal.textContent = modelNames[model] || model;
+  }
+  
+  updateVoiceModelCheckmarks();
+  closeVoiceModelPicker();
+  
+  showToast('Model: ' + modelNames[model] + ' ' + modelSizes[model], 2000);
+  if (model !== 'base' || !whisperPipeline) {
+    showToast('Will download on next recording', 2000);
+  }
+}
+
+function loadVoiceModel() {
+  var saved = localStorage.getItem('voiceModel');
+  if (saved) {
+    currentVoiceModel = saved;
+    console.log('Voice model loaded:', saved);
+  } else {
+    // Default to base (balanced)
+    currentVoiceModel = 'base';
+    localStorage.setItem('voiceModel', 'base');
+    console.log('Voice model defaulted to base');
+  }
+  
+  // Update menu display
+  var menuVal = $('menu-voice-model-val');
+  if (menuVal) {
+    menuVal.textContent = modelNames[currentVoiceModel] || currentVoiceModel;
+  }
+}
+
+function initWhisper() {
+  if (whisperPipeline) return Promise.resolve(whisperPipeline);
+  
+  var modelName = 'Xenova/whisper-' + currentVoiceModel;
+  var modelSize = modelSizes[currentVoiceModel];
+  
+  console.log('Loading Whisper model:', modelName);
+  showToast('Loading ' + currentVoiceModel + ' model (' + modelSize + ')...', 3000);
+  
+  return window.transformersPipeline(
+    'automatic-speech-recognition',
+    modelName,
+    {
+      quantized: true,
+      progress_callback: function(progress) {
+        if (progress.status === 'downloading' && progress.progress) {
+          var percent = Math.round(progress.progress);
+          showToast('Downloading: ' + percent + '%', 1000);
+        }
+      }
+    }
+  )
+    .then(function(pipeline) {
+      whisperPipeline = pipeline;
+      showToast('✓ ' + modelNames[currentVoiceModel] + ' model ready!', 1500);
+      return whisperPipeline;
+    })
+    .catch(function(err) {
+      console.error('Failed to initialize Whisper:', err);
+      
+      // If model loading failed (probably OOM), try to fallback
+      if (currentVoiceModel !== 'tiny') {
+        showToast('Model too heavy, switching to Tiny...', 3000);
+        currentVoiceModel = 'tiny';
+        localStorage.setItem('voiceModel', 'tiny');
+        
+        // Update menu display
+        var menuVal = $('menu-voice-model-val');
+        if (menuVal) {
+          menuVal.textContent = 'Tiny';
+        }
+        
+        // Try again with tiny
+        return initWhisper();
+      }
+      
+      showToast('Error loading model', 3000);
+      throw err;
+    });
+}
+
+function toggleRecording() {
+  if (isProcessing) {
+    showToast('Waiting for previous transcription...', 2000);
+    return;
+  }
+  
+  var $micBtn = $('mic-btn');
+  var $promptInput = $('prompt-input');
+  
+  if (!isRecording) {
+    // Check if running as PWA
+    var isPWA = window.matchMedia('(display-mode: standalone)').matches 
+      || window.navigator.standalone === true
+      || document.referrer.includes('android-app://');
+    
+    // Check microphone support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      var errorMsg = 'Microphone not supported';
+      if (!window.isSecureContext) {
+        errorMsg = 'HTTPS required for microphone access';
+      }
+      showToast(errorMsg, 3000);
+      console.error('MediaDevices not available. Secure context:', window.isSecureContext);
+      return;
+    }
+    
+    // Request microphone with optimal settings for mobile PWA
+    navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 16000, // Optimal for Whisper
+        channelCount: 1
+      } 
+    })
+      .then(function(stream) {
+        try {
+          mediaRecorder = new MediaRecorder(stream, {
+            mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+          });
+        } catch (e) {
+          // Fallback without mimeType
+          mediaRecorder = new MediaRecorder(stream);
+        }
+        
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = function(event) {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+        
+      mediaRecorder.onstop = function() {
+        var mimeType = mediaRecorder.mimeType || 'audio/webm';
+        var audioBlob = new Blob(audioChunks, { type: mimeType });
+        stream.getTracks().forEach(function(track) { track.stop(); });
+        
+        console.log('Recording stopped, blob size:', audioBlob.size, 'type:', audioBlob.type);
+        
+        isRecording = false;
+        $micBtn.classList.remove('recording');
+        $micBtn.classList.add('processing');
+        isProcessing = true;
+        
+        // Check if recording is valid
+        if (audioBlob.size < 1000) {
+          showToast('Recording too short or empty', 2500);
+          isProcessing = false;
+          $micBtn.classList.remove('processing');
+          return;
+        }
+        
+        showToast('Transcribing...', 2000);
+        
+        transcribeAudio(audioBlob)
+            .then(function(text) {
+              if (text && text.trim()) {
+                // Append transcribed text to prompt input
+                var currentText = $promptInput.value.trim();
+                $promptInput.value = currentText ? currentText + ' ' + text.trim() : text.trim();
+                
+                // Auto-resize textarea
+                $promptInput.style.height = 'auto';
+                $promptInput.style.height = $promptInput.scrollHeight + 'px';
+                
+                showToast('✓ Transcription complete', 1500);
+              } else {
+                showToast('No speech detected', 2000);
+              }
+            })
+            .catch(function(err) {
+              console.error('Transcription error:', err);
+              showToast('Transcription error', 2500);
+            })
+            .finally(function() {
+              isProcessing = false;
+              $micBtn.classList.remove('processing');
+            });
+        };
+        
+      // Start recording with timeslice for better data capture
+      mediaRecorder.start(100); // Capture data every 100ms
+      isRecording = true;
+      $micBtn.classList.add('recording');
+      console.log('Recording started with format:', mediaRecorder.mimeType);
+      showToast('🎤 Recording... (tap again to stop)', 2000);
+      })
+      .catch(function(err) {
+        console.error('Microphone access error:', err);
+        var errorMsg = 'Cannot access microphone';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          errorMsg = 'Microphone permission denied';
+        } else if (err.name === 'NotFoundError') {
+          errorMsg = 'No microphone found';
+        } else if (err.name === 'NotSupportedError') {
+          errorMsg = 'Microphone not supported';
+        }
+        showToast(errorMsg, 3000);
+        isRecording = false;
+        $micBtn.classList.remove('recording');
+      });
+  } else {
+    // Stop recording
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+  }
+}
+
+function transcribeAudio(audioBlob) {
+  console.log('Starting transcription, blob size:', audioBlob.size);
+  
+  return initWhisper()
+    .then(function(pipeline) {
+      return audioBlob.arrayBuffer()
+        .then(function(arrayBuffer) {
+          console.log('Audio buffer size:', arrayBuffer.byteLength);
+          var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          return audioContext.decodeAudioData(arrayBuffer);
+        })
+        .then(function(audioBuffer) {
+          // Convert to mono Float32Array (required by Whisper)
+          var audioData = audioBuffer.getChannelData(0);
+          var sampleRate = audioBuffer.sampleRate;
+          
+          console.log('Audio duration:', audioBuffer.duration, 'seconds');
+          console.log('Sample rate:', sampleRate);
+          console.log('Audio data length:', audioData.length);
+          
+          // Check if audio is too short or empty
+          if (audioBuffer.duration < 0.5) {
+            throw new Error('Audio too short (minimum 0.5 seconds)');
+          }
+          
+          // Resample to 16kHz if needed (Whisper expects 16kHz)
+          var targetSampleRate = 16000;
+          var resampledData = audioData;
+          
+          if (sampleRate !== targetSampleRate) {
+            var ratio = sampleRate / targetSampleRate;
+            var newLength = Math.floor(audioData.length / ratio);
+            resampledData = new Float32Array(newLength);
+            
+            for (var i = 0; i < newLength; i++) {
+              var srcIndex = Math.floor(i * ratio);
+              resampledData[i] = audioData[srcIndex];
+            }
+            console.log('Resampled from', sampleRate, 'to', targetSampleRate, 'Hz');
+          }
+          
+          // Get selected language preference
+          var selectedLang = getSelectedVoiceLanguage();
+          console.log('Transcribing with language:', selectedLang || 'auto-detect');
+          
+          // Transcribe with language preference
+          return pipeline(resampledData, {
+            language: selectedLang, // use selected language or auto-detect
+            task: 'transcribe',
+            return_timestamps: false,
+            chunk_length_s: 30,
+            stride_length_s: 5
+          });
+        })
+        .then(function(result) {
+          console.log('Transcription result:', result);
+          var text = result.text || '';
+          console.log('Final text:', text);
+          return text;
+        });
+    })
+    .catch(function(err) {
+      console.error('Transcription processing error:', err);
+      showToast('Error: ' + err.message, 3000);
+      throw err;
     });
 }
 

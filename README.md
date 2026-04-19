@@ -74,9 +74,12 @@
 
 ![](https://img.shields.io/badge/PWA-Installable-blue?style=flat-square)
 ![](https://img.shields.io/badge/Touch-Optimized-blue?style=flat-square)
-![](https://img.shields.io/badge/Offline-Ready-blue?style=flat-square)
+![](https://img.shields.io/badge/Voice-Whisper_AI-blue?style=flat-square)
 
 - Progressive Web App
+- **Voice Input (Whisper AI)**
+- **Push Notifications (iOS/Android)**
+- **Multi-language voice support**
 - Touch-optimized interface
 - Dark theme (OLED optimized)
 - Markdown & code highlighting
@@ -227,6 +230,47 @@ CursorBeam consists of two parts:
 
 ---
 
+## Voice Input & Push Notifications
+
+### 🎤 Voice Input (Whisper AI)
+
+Send prompts to Cursor using your voice! CursorBeam includes OpenAI's Whisper for high-quality speech-to-text transcription.
+
+**Features:**
+- **Multi-language support** - English, Hebrew, Arabic, Spanish, French, German, Russian, Chinese, and more
+- **Multiple model sizes** - Choose between speed (tiny) and accuracy (large)
+- **Auto-detect language** - Or select your preferred language
+- **Privacy-first** - All transcription happens **locally on your machine** (no data sent to cloud)
+
+**Setup:**
+The installer automatically downloads and configures Whisper during installation. No additional setup needed!
+
+**Usage:**
+1. Tap the microphone button (🎤) in the chat input
+2. Speak your prompt
+3. CursorBeam transcribes and sends it to Cursor
+
+### 🔔 Push Notifications
+
+Get notified when Cursor finishes responding to your prompt - even when the app is in the background!
+
+**iOS/Android Support:**
+- ✅ Works on **installed PWAs** (Add to Home Screen)
+- ✅ Background notifications when app is closed
+- ✅ Notification when response is complete
+- ✅ Privacy-focused (uses Web Push API standard)
+
+**Setup:**
+1. Install CursorBeam PWA to your Home Screen
+2. Open the menu (☰) → **"Notifications"**
+3. Allow notification permissions when prompted
+4. That's it! You'll now get notifications when Cursor finishes responding
+
+**HTTPS Self-Signed Certificate:**
+CursorBeam uses HTTPS with a self-signed certificate for secure communication. This is completely safe for local network use - the certificate is generated on your machine and ensures encrypted connections between your phone and computer. You'll see a security warning the first time you connect - just accept it to proceed. No external authority or cloud service has access to your data.
+
+---
+
 ## Architecture
 
 ```
@@ -248,9 +292,10 @@ CursorBeam consists of two parts:
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | **Frontend** | HTML5, CSS3, Vanilla JS | PWA client with zero dependencies |
-| **Communication** | WebSocket, CDP | Real-time bidirectional sync |
+| **Communication** | WebSocket, CDP, Web Push API | Real-time bidirectional sync and notifications |
 | **Backend** | Node.js, Express, TypeScript | Relay server and state management |
-| **Security** | bcrypt, JWT, helmet | Authentication and protection |
+| **AI/ML** | OpenAI Whisper | Local speech-to-text transcription |
+| **Security** | bcrypt, JWT, helmet, VAPID | Authentication and protection |
 | **Network** | Tailscale (optional) | Secure remote access |
 
 ### How It Works

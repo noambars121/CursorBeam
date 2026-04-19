@@ -6,6 +6,7 @@
  * Endpoints:
  *   GET  /health  — CDP/Cursor connection status
  *   POST /admin/restart-relay — Auth: respawn relay (when supervisor :9799 not used)
+ *   GET  /commands — Available slash commands
  *   GET  /state   — Latest extracted chat state
  *   POST /send    — Inject prompt into Cursor composer
  *   POST /chat/load-older — Scroll Cursor composer up to load virtualized older messages (mobile scroll-back)
@@ -15,6 +16,7 @@
  */
 
 import http from 'node:http';
+import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -26,6 +28,8 @@ import { CdpStateManager, type StateChangeEvent, type TerminalChangeEvent, type 
 import { checkPassword, createToken, verifyToken, extractToken } from './auth.js';
 import { VALID_PUBLIC_MODES } from './mode-utils.js';
 import { loadProjects, findProject, detectActiveProject } from './project-manager.js';
+import { buildMcpServerList, type DirInfo, type McpSettings } from './mcp-merge.js';
+import webpush from 'web-push';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,6 +51,7 @@ const MANIFEST_JSON = JSON.stringify({
   id: '/cursor-remote',
   name: 'CursorBeam',
   short_name: 'CursorBeam',
+  description: 'Mobile interface for Cursor IDE',
   start_url: '/',
   scope: '/',
   display: 'standalone',
@@ -54,10 +59,16 @@ const MANIFEST_JSON = JSON.stringify({
   background_color: '#0d1117',
   theme_color: '#0d1117',
   icons: [
-    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    { src: '/icon-16.png', sizes: '16x16', type: 'image/png' },
+    { src: '/icon-32.png', sizes: '32x32', type: 'image/png' },
+    { src: '/icon-48.png', sizes: '48x48', type: 'image/png' },
+    { src: '/icon-64.png', sizes: '64x64', type: 'image/png' },
+    { src: '/icon-96.png', sizes: '96x96', type: 'image/png' },
+    { src: '/icon-128.png', sizes: '128x128', type: 'image/png' },
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+    { src: '/icon-256.png', sizes: '256x256', type: 'image/png' },
+    { src: '/icon-384.png', sizes: '384x384', type: 'image/png' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
   ],
 });
 
@@ -85,8 +96,107 @@ const ICON_CACHE = new Map<string, Buffer>();
 const PORT = parseInt(process.env.PORT ?? '9800', 10);
 const CDP_BASE = process.env.V2_CDP_BASE ?? 'http://127.0.0.1:9222';
 const POLL_MS = parseInt(process.env.POLL_MS ?? '1500', 10);
-const BIND_ADDR = process.env.BIND_ADDR ?? '127.0.0.1';
+const BIND_ADDR = process.env.BIND_ADDR ?? '0.0.0.0'; // Changed to allow external access for PWA
+const USE_HTTPS = process.env.USE_HTTPS === 'true';
 const LAUNCHED_BY_START = process.env._V2_LAUNCHED === '1';
+
+// ---------------------------------------------------------------------------
+// Web Push Configuration
+// ---------------------------------------------------------------------------
+
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:cursorbeam@example.com';
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  log('Web Push configured with VAPID keys');
+} else {
+  log('Warning: VAPID keys not configured - push notifications disabled');
+}
+
+// Store push subscriptions (in production, use database)
+const pushSubscriptions = new Map<string, any>();
+
+// Track previous activity state for push notifications
+let previousActivityState = 'idle';
+let respondingStartTime = 0;
+
+async function sendPushNotification(title: string, body: string): Promise<void> {
+  if (pushSubscriptions.size === 0) {
+    log('[Push] No subscriptions to send to');
+    return;
+  }
+  
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    log('[Push] VAPID not configured');
+    return;
+  }
+  
+  const payload = JSON.stringify({ title, body });
+  log(`[Push] Sending to ${pushSubscriptions.size} subscription(s): "${title}"`);
+  
+  const promises: Promise<any>[] = [];
+  const toDelete: string[] = [];
+  
+  for (const [endpoint, subscription] of pushSubscriptions.entries()) {
+    const promise = webpush.sendNotification(subscription, payload)
+      .catch((err: any) => {
+        log(`[Push] Failed to send to ${endpoint.substring(0, 50)}...: ${err.message}`);
+        // If subscription is no longer valid (410 Gone or 404), remove it
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          toDelete.push(endpoint);
+        }
+      });
+    promises.push(promise);
+  }
+  
+  await Promise.all(promises);
+  
+  // Clean up invalid subscriptions
+  for (const endpoint of toDelete) {
+    pushSubscriptions.delete(endpoint);
+    log(`[Push] Removed invalid subscription: ${endpoint.substring(0, 50)}...`);
+  }
+  
+  log(`[Push] Sent successfully. Remaining subscriptions: ${pushSubscriptions.size}`);
+}
+
+// ---------------------------------------------------------------------------
+// HTTPS Self-Signed Certificate
+// ---------------------------------------------------------------------------
+
+function getOrCreateSelfSignedCert(): { key: string; cert: string } {
+  const certDir = path.join(os.homedir(), '.cursor-mobile-certs');
+  const keyPath = path.join(certDir, 'server.key');
+  const certPath = path.join(certDir, 'server.cert');
+  
+  // Return existing cert if found
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    return {
+      key: fs.readFileSync(keyPath, 'utf-8'),
+      cert: fs.readFileSync(certPath, 'utf-8')
+    };
+  }
+  
+  // Certificate not found - provide clear instructions
+  console.error('\n\x1b[31m❌ HTTPS Certificate Not Found\x1b[0m');
+  console.error('\nFor microphone support in PWA, HTTPS is required.');
+  console.error('A self-signed certificate must be generated.\n');
+  console.error('\x1b[33mOption 1 - PowerShell (Recommended):\x1b[0m');
+  console.error(`  powershell -ExecutionPolicy Bypass -File scripts\\generate-cert.ps1\n`);
+  console.error('\x1b[33mOption 2 - OpenSSL:\x1b[0m');
+  console.error(`  openssl req -x509 -newkey rsa:2048 -nodes -days 365 \\`);
+  console.error(`    -keyout "${keyPath}" \\`);
+  console.error(`    -out "${certPath}" \\`);
+  console.error(`    -subj "/CN=localhost"\n`);
+  console.error('\x1b[33mOption 3 - Use mkcert (trusted cert):\x1b[0m');
+  console.error(`  mkcert -install`);
+  console.error(`  mkcert -key-file "${keyPath}" -cert-file "${certPath}" localhost 127.0.0.1 ::1\n`);
+  console.error('After generating certificate, restart the server.\n');
+  
+  throw new Error('HTTPS certificate required but not found');
+}
 
 // ---------------------------------------------------------------------------
 // Logging
@@ -167,6 +277,32 @@ function broadcastToClients(event: StateChangeEvent): void {
 }
 
 manager.on('change', (event: StateChangeEvent) => {
+  const currentActivityState = event.snapshot.activityState;
+  
+  // Check if Cursor finished responding (for push notifications)
+  if (previousActivityState === 'responding' && currentActivityState !== 'responding') {
+    const duration = Date.now() - respondingStartTime;
+    log(`[Push] 🔔 Cursor finished responding (duration: ${duration}ms)`);
+    log(`[Push] 🔔 Subscriptions: ${pushSubscriptions.size}`);
+    
+    // Only send notification if was responding for at least 2 seconds
+    if (duration >= 2000) {
+      log('[Push] 🔔 Duration >= 2s, sending push notification...');
+      sendPushNotification('Cursor Finished', 'Response complete').catch((err) => {
+        log(`[Push] ❌ Error: ${err.message}`);
+      });
+    } else {
+      log(`[Push] ⏸️ Duration < 2s, skipping notification`);
+    }
+  }
+  
+  // Track state changes
+  if (currentActivityState === 'responding' && previousActivityState !== 'responding') {
+    respondingStartTime = Date.now();
+    log('[Push] 🚀 Cursor started responding');
+  }
+  previousActivityState = currentActivityState;
+  
   if (wsClients.size > 0) {
     broadcastToClients(event);
     log(`State change → ${wsClients.size} client(s), ${event.newMessages.length} new msg(s)`);
@@ -217,8 +353,10 @@ function scheduleRelaySelfRestart(): void {
   }
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+// Create HTTP or HTTPS server based on config
+const requestHandler = async (req: http.IncomingMessage, res: http.ServerResponse) => {
+  const protocol = USE_HTTPS ? 'https' : 'http';
+  const url = new URL(req.url ?? '/', `${protocol}://localhost:${PORT}`);
   const method = req.method ?? 'GET';
 
   // CORS preflight
@@ -235,7 +373,11 @@ const server = http.createServer(async (req, res) => {
   try {
     // ----- GET / (web UI) -----
     if (method === 'GET' && url.pathname === '/') {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 
+        'Content-Type': 'text/html; charset=utf-8',
+        'Permissions-Policy': 'microphone=(self)',
+        'Feature-Policy': 'microphone \'self\''
+      });
       // Read dynamically to avoid requiring server restart on HTML changes
       const html = fs.readFileSync(path.join(__dirname, 'client.html'), 'utf-8');
       res.end(html);
@@ -246,6 +388,17 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && url.pathname === '/manifest.json') {
       res.writeHead(200, { 'Content-Type': 'application/manifest+json' });
       res.end(MANIFEST_JSON);
+      return;
+    }
+
+    // ----- GET /sw.js (Service Worker) -----
+    if (method === 'GET' && url.pathname === '/sw.js') {
+      res.writeHead(200, { 
+        'Content-Type': 'application/javascript',
+        'Service-Worker-Allowed': '/'
+      });
+      const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
+      res.end(sw);
       return;
     }
 
@@ -306,6 +459,450 @@ const server = http.createServer(async (req, res) => {
     }
 
     // --- Auth required below ---
+
+    // ----- GET /commands -----
+    if (method === 'GET' && url.pathname === '/commands') {
+      if (!requireAuth(req, res)) return;
+
+      const commands: Array<{ name: string; description: string }> = [];
+      
+      // Add built-in Cursor commands (not from skills)
+      const builtInCommands = [
+        { name: 'clear', description: 'Clear the current chat conversation' },
+        { name: 'fix', description: 'Fix the selected code or error' },
+        { name: 'explain', description: 'Explain the selected code' },
+        { name: 'optimize', description: 'Optimize the selected code' },
+        { name: 'test', description: 'Generate tests for the selected code' },
+        { name: 'docs', description: 'Generate documentation for the selected code' },
+        { name: 'refactor', description: 'Refactor the selected code' },
+        { name: 'debug', description: 'Help debug the selected code' },
+        { name: 'review', description: 'Review the selected code' },
+        { name: 'commit', description: 'Generate a commit message' },
+      ];
+      commands.push(...builtInCommands);
+      
+      // Read skills from Claude, Cursor, and plugins
+      const userHome = os.homedir();
+      const skillsDirs = [
+        path.join(userHome, '.claude', 'skills'),         // Claude skills
+        path.join(userHome, '.cursor', 'skills'),         // User Cursor skills
+        path.join(userHome, '.cursor', 'skills-cursor'),  // Built-in Cursor skills
+      ];
+      
+      // Add plugin skills (scan recursively)
+      const pluginsCache = path.join(userHome, '.cursor', 'plugins', 'cache', 'cursor-public');
+      if (fs.existsSync(pluginsCache)) {
+        try {
+          const scanPlugins = (dir: string) => {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              const fullPath = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                if (entry.name === 'skills') {
+                  skillsDirs.push(fullPath);
+                } else {
+                  scanPlugins(fullPath);
+                }
+              }
+            }
+          };
+          scanPlugins(pluginsCache);
+        } catch (err) {
+          log(`Failed to scan plugins: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      for (const skillsDir of skillsDirs) {
+        if (!fs.existsSync(skillsDir)) {
+          log(`Skills dir not found: ${skillsDir}`);
+          continue;
+        }
+        
+        try {
+          const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+          log(`Reading skills from ${skillsDir}: ${entries.length} entries`);
+          
+          for (const entry of entries) {
+            if (!entry.isDirectory()) continue;
+            
+            const skillFile = path.join(skillsDir, entry.name, 'SKILL.md');
+            if (!fs.existsSync(skillFile)) {
+              log(`  Skipping ${entry.name} (no SKILL.md)`);
+              continue;
+            }
+            
+            try {
+              const content = fs.readFileSync(skillFile, 'utf-8');
+              
+              // Parse YAML front matter (more flexible regex)
+              const frontMatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+              if (frontMatterMatch) {
+                const frontMatter = frontMatterMatch[1];
+                
+                // Extract name
+                const nameMatch = frontMatter.match(/^name:\s*(.+?)$/m);
+                
+                // Extract description (support multi-line with >- or >)
+                let description = '';
+                
+                // Check if description uses multi-line YAML (> or >-)
+                const multiLineMatch = frontMatter.match(/^description:\s*>-?\s*\r?\n([\s\S]*?)(?=\r?\n[a-z_]+:\s|$)/mi);
+                if (multiLineMatch) {
+                  description = multiLineMatch[1]
+                    .split(/\r?\n/)
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0 && !line.startsWith('---'))
+                    .join(' ')
+                    .substring(0, 200);
+                } else {
+                  // Try single-line description
+                  const singleLineMatch = frontMatter.match(/^description:\s*(.+?)$/m);
+                  if (singleLineMatch) {
+                    description = singleLineMatch[1].trim().substring(0, 200);
+                  }
+                }
+                
+                if (nameMatch) {
+                  const name = nameMatch[1].trim();
+                  commands.push({ name, description });
+                  log(`  ✓ ${name}`);
+                } else {
+                  log(`  ✗ ${entry.name} (no name field)`);
+                }
+              } else {
+                log(`  ✗ ${entry.name} (no front matter)`);
+              }
+            } catch (err) {
+              log(`  ✗ ${entry.name} (read error: ${err instanceof Error ? err.message : String(err)})`);
+            }
+          }
+        } catch (err) {
+          log(`Failed to read skills dir ${skillsDir}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      // Remove duplicates (in case same skill appears in multiple dirs)
+      const uniqueCommands: Array<{ name: string; description: string }> = [];
+      const seen = new Set<string>();
+      for (const cmd of commands) {
+        if (!seen.has(cmd.name)) {
+          seen.add(cmd.name);
+          uniqueCommands.push(cmd);
+        }
+      }
+
+      // Sort alphabetically
+      uniqueCommands.sort((a, b) => a.name.localeCompare(b.name));
+
+      log(`GET /commands → ${uniqueCommands.length} unique commands (from ${commands.length} total)`);
+      log(`Command names: ${uniqueCommands.map(c => c.name).join(', ')}`);
+      sendJson(res, 200, { commands: uniqueCommands });
+      return;
+    }
+
+    // ----- GET /vapid-public-key -----
+    if (method === 'GET' && url.pathname === '/vapid-public-key') {
+      if (!requireAuth(req, res)) return;
+      
+      if (!VAPID_PUBLIC_KEY) {
+        sendJson(res, 500, { error: 'VAPID not configured' });
+        return;
+      }
+      
+      log('GET /vapid-public-key');
+      sendJson(res, 200, { publicKey: VAPID_PUBLIC_KEY });
+      return;
+    }
+
+    // ----- POST /push-subscribe -----
+    if (method === 'POST' && url.pathname === '/push-subscribe') {
+      if (!requireAuth(req, res)) return;
+      
+      const body = await readBody(req);
+      let subscription: any;
+      try {
+        subscription = JSON.parse(body);
+      } catch {
+        sendJson(res, 400, { error: 'Invalid JSON' });
+        return;
+      }
+      
+      // Store subscription (use endpoint as unique key)
+      const endpoint = subscription.endpoint;
+      if (endpoint) {
+        pushSubscriptions.set(endpoint, subscription);
+        log(`POST /push-subscribe → Saved subscription (total: ${pushSubscriptions.size})`);
+        log(`[Push] 🔔 Endpoint: ${endpoint.substring(0, 60)}...`);
+        sendJson(res, 200, { ok: true, message: 'Subscription saved', total: pushSubscriptions.size });
+      } else {
+        sendJson(res, 400, { error: 'Invalid subscription' });
+      }
+      return;
+    }
+
+    // ----- GET /push-status -----
+    if (method === 'GET' && url.pathname === '/push-status') {
+      if (!requireAuth(req, res)) return;
+
+      log(`GET /push-status → ${pushSubscriptions.size} subscription(s)`);
+      sendJson(res, 200, {
+        subscriptions: pushSubscriptions.size,
+        vapidConfigured: !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY)
+      });
+      return;
+    }
+
+    // ----- POST /push-test -----
+    if (method === 'POST' && url.pathname === '/push-test') {
+      if (!requireAuth(req, res)) return;
+
+      log('[Push] 🧪 Manual test requested');
+      
+      if (pushSubscriptions.size === 0) {
+        sendJson(res, 400, { error: 'No subscriptions available' });
+        return;
+      }
+
+      sendPushNotification('🧪 Test Notification', 'This is a manual test from the server!')
+        .then(() => {
+          sendJson(res, 200, { ok: true, message: `Sent to ${pushSubscriptions.size} subscription(s)` });
+        })
+        .catch((err) => {
+          sendJson(res, 500, { error: err.message });
+        });
+      return;
+    }
+
+    // ----- GET /mcp-servers -----
+    if (method === 'GET' && url.pathname === '/mcp-servers') {
+      if (!requireAuth(req, res)) return;
+
+      // Read MCP servers config from Cursor settings.
+      const cursorSettingsPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Cursor', 'User', 'settings.json');
+      let mcpSettings: McpSettings = {};
+      if (fs.existsSync(cursorSettingsPath)) {
+        try {
+          const settingsContent = fs.readFileSync(cursorSettingsPath, 'utf-8');
+          const cleanContent = settingsContent.replace(/,(\s*[}\]])/g, '$1');
+          const settings = JSON.parse(cleanContent);
+          mcpSettings = (settings['mcpServers'] || settings['mcp.servers'] || {}) as McpSettings;
+          log(`Found ${Object.keys(mcpSettings).length} MCP server settings: ${Object.keys(mcpSettings).join(', ')}`);
+        } catch (err) {
+          log(`Failed to read Cursor settings: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      // Scan the per-workspace mcps folder into DirInfo records (no merging here
+      // — that's done by buildMcpServerList so the rules stay unit-testable).
+      const workspaceName = 'c-Users-Noam-Music-cursor-mobile';
+      const mcpsPath = path.join(os.homedir(), '.cursor', 'projects', workspaceName, 'mcps');
+      const dirs: DirInfo[] = [];
+
+      if (fs.existsSync(mcpsPath)) {
+        try {
+          const entries = fs.readdirSync(mcpsPath, { withFileTypes: true });
+          const dirNames = entries.filter(e => e.isDirectory()).map(e => e.name);
+          log(`Found ${dirNames.length} MCP directories: ${dirNames.join(', ')}`);
+
+          for (const entry of entries) {
+            if (!entry.isDirectory()) continue;
+            try {
+              const serverPath = path.join(mcpsPath, entry.name);
+              const toolsDir = path.join(serverPath, 'tools');
+              const resourcesDir = path.join(serverPath, 'resources');
+              const promptsDir = path.join(serverPath, 'prompts');
+              const errorFile = path.join(serverPath, 'error.txt');
+              const serverInfoFile = path.join(serverPath, 'server-info.json');
+
+              let toolsCount = 0, resourcesCount = 0, promptsCount = 0;
+              let needsAuth = false, hasError = false, errorMessage = '';
+
+              if (fs.existsSync(errorFile)) {
+                hasError = true;
+                try { errorMessage = fs.readFileSync(errorFile, 'utf-8').trim(); }
+                catch { errorMessage = 'Unknown error'; }
+              } else if (fs.existsSync(serverInfoFile)) {
+                try {
+                  const serverInfo = JSON.parse(fs.readFileSync(serverInfoFile, 'utf-8'));
+                  if (serverInfo.error || serverInfo.status === 'error') {
+                    hasError = true;
+                    errorMessage = serverInfo.error || serverInfo.errorMessage || 'Show Output';
+                  }
+                } catch { /* ignore parse errors */ }
+              }
+
+              if (fs.existsSync(toolsDir)) {
+                try {
+                  const toolFiles = fs.readdirSync(toolsDir, { withFileTypes: true });
+                  toolsCount = toolFiles.filter(f => f.isFile() && f.name.endsWith('.json')).length;
+                  if (toolFiles.some(f => f.name === 'mcp_auth.json')) needsAuth = true;
+                } catch { /* ignore */ }
+              }
+              if (fs.existsSync(resourcesDir)) {
+                try {
+                  const resourceFiles = fs.readdirSync(resourcesDir, { withFileTypes: true });
+                  resourcesCount = resourceFiles.filter(f => f.isFile() && f.name.endsWith('.json')).length;
+                } catch { /* ignore */ }
+              }
+              if (fs.existsSync(promptsDir)) {
+                try {
+                  const promptFiles = fs.readdirSync(promptsDir, { withFileTypes: true });
+                  promptsCount = promptFiles.filter(f => f.isFile() && f.name.endsWith('.json')).length;
+                } catch { /* ignore */ }
+              }
+
+              dirs.push({ name: entry.name, toolsCount, resourcesCount, promptsCount, needsAuth, hasError, errorMessage });
+              log(`  ${entry.name}: tools=${toolsCount}, resources=${resourcesCount}, prompts=${promptsCount}, hasError=${hasError}`);
+            } catch (entryErr) {
+              log(`  ⚠ ${entry.name}: failed to scan - ${entryErr instanceof Error ? entryErr.message : String(entryErr)}`);
+              dirs.push({ name: entry.name, toolsCount: 0, resourcesCount: 0, promptsCount: 0, needsAuth: false, hasError: true, errorMessage: 'Failed to read server info' });
+            }
+          }
+        } catch (err) {
+          log(`Failed to read MCP servers: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      // Optionally fetch Cursor's UI state — that's the source of truth for
+      // the on/off flag (settings.json lags or is missing for plugin-*).
+      let uiServers: Array<{ name: string; enabled: boolean }> | undefined;
+      const skipUiQuery = url.searchParams.get('skipUi') === '1';
+      if (!skipUiQuery) {
+        try {
+          const uiState = await manager.getMcpServersStateFromUI();
+          uiServers = uiState.servers;
+          log(`UI state: ${uiServers.length} servers — ${uiServers.map(s => `${s.name}=${s.enabled}`).join(', ')}`);
+        } catch (uiErr) {
+          log(`Could not read UI state: ${uiErr instanceof Error ? uiErr.message : String(uiErr)}`);
+        }
+      }
+
+      const mcpServers = buildMcpServerList(dirs, mcpSettings, uiServers);
+      log(`GET /mcp-servers → ${mcpServers.length} servers`);
+      sendJson(res, 200, { servers: mcpServers });
+      return;
+    }
+
+    // ----- GET /mcp-servers/ui-state -----
+    if (method === 'GET' && url.pathname === '/mcp-servers/ui-state') {
+      if (!requireAuth(req, res)) return;
+
+      try {
+        log('Reading MCP servers state from Cursor UI...');
+        const uiState = await manager.getMcpServersStateFromUI();
+        log(`Got ${uiState.servers.length} servers from UI: ${uiState.servers.map(s => `${s.name}=${s.enabled}`).join(', ')}`);
+        sendJson(res, 200, uiState);
+        return;
+      } catch (err) {
+        log(`Failed to read UI state: ${err instanceof Error ? err.message : String(err)}`);
+        sendJson(res, 500, { error: 'Failed to read UI state', servers: [] });
+        return;
+      }
+    }
+
+    // ----- POST /mcp-servers/toggle -----
+    if (method === 'POST' && url.pathname === '/mcp-servers/toggle') {
+      if (!requireAuth(req, res)) return;
+
+      const body = await readBody(req);
+      const { serverName, enabled } = JSON.parse(body);
+
+      // Extract base name (remove prefix)
+      const baseName = serverName.replace(/^(user-|plugin-|cursor-ide-)/, '');
+      
+      // Try to toggle via Cursor UI (like we send messages)
+      try {
+        log(`Toggling ${baseName} → ${enabled} via Cursor UI`);
+        const toggleResult = await manager.toggleMcpServer(baseName, enabled);
+        
+        if (toggleResult.ok) {
+          log(`✓ Successfully toggled ${baseName} in Cursor UI (${(toggleResult as any).alreadySet ? 'already set' : 'clicked'})`);
+          sendJson(res, 200, { 
+            success: true, 
+            serverName: baseName, 
+            enabled,
+            method: 'cursor-ui'
+          });
+          return;
+        } else {
+          const totalContainers = (toggleResult as any).totalContainers || 0;
+          log(`✗ Failed to toggle in UI: ${toggleResult.error} (found ${totalContainers} containers)`);
+          log(`   Will save to settings.json instead - requires Cursor reload`);
+        }
+      } catch (e) {
+        log(`UI toggle error: ${e instanceof Error ? e.message : String(e)}, falling back to settings file`);
+      }
+      
+      log(`Saving ${baseName} → ${enabled} to settings.json (fallback)`);
+
+      // Read current Cursor settings
+      const cursorSettingsPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Cursor', 'User', 'settings.json');
+      
+      try {
+        // Read Cursor workspace settings (where MCP config is stored per-workspace)
+        const workspaceName = 'c-Users-Noam-Music-cursor-mobile';
+        const workspaceSettingsPath = path.join(os.homedir(), '.cursor', 'projects', workspaceName, 'settings.json');
+        
+        let workspaceSettings: any = {};
+        if (fs.existsSync(workspaceSettingsPath)) {
+          try {
+            const content = fs.readFileSync(workspaceSettingsPath, 'utf-8');
+            const cleanContent = content.replace(/,(\s*[}\]])/g, '$1');
+            workspaceSettings = JSON.parse(cleanContent);
+          } catch (e) {
+            log(`Failed to parse workspace settings: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+
+        // Also update global settings.json for consistency
+        let globalSettings: any = {};
+        if (fs.existsSync(cursorSettingsPath)) {
+          const settingsContent = fs.readFileSync(cursorSettingsPath, 'utf-8');
+          const cleanContent = settingsContent.replace(/,(\s*[}\]])/g, '$1');
+          globalSettings = JSON.parse(cleanContent);
+        }
+
+        // Update both locations with the MCP server enabled status
+        if (!globalSettings.mcpServers) {
+          globalSettings.mcpServers = {};
+        }
+        if (!globalSettings.mcpServers[baseName]) {
+          globalSettings.mcpServers[baseName] = {};
+        }
+        globalSettings.mcpServers[baseName].enabled = enabled;
+        
+        if (!workspaceSettings.mcpServers) {
+          workspaceSettings.mcpServers = {};
+        }
+        if (!workspaceSettings.mcpServers[baseName]) {
+          workspaceSettings.mcpServers[baseName] = {};
+        }
+        workspaceSettings.mcpServers[baseName].enabled = enabled;
+
+        // Write both files
+        fs.writeFileSync(cursorSettingsPath, JSON.stringify(globalSettings, null, 2), 'utf-8');
+        
+        // Create workspace settings dir if needed
+        const workspaceSettingsDir = path.dirname(workspaceSettingsPath);
+        if (!fs.existsSync(workspaceSettingsDir)) {
+          fs.mkdirSync(workspaceSettingsDir, { recursive: true });
+        }
+        fs.writeFileSync(workspaceSettingsPath, JSON.stringify(workspaceSettings, null, 2), 'utf-8');
+
+        log(`POST /mcp-servers/toggle → ${baseName} = ${enabled} (saved to settings)`);
+        sendJson(res, 200, { 
+          success: true, 
+          serverName: baseName, 
+          enabled,
+          method: 'settings-file',
+          note: 'Settings saved. Toggle may not work in real-time - Cursor controls this internally.'
+        });
+      } catch (err) {
+        log(`Failed to update MCP server settings: ${err instanceof Error ? err.message : String(err)}`);
+        sendJson(res, 500, { error: 'Failed to update settings', detail: err instanceof Error ? err.message : String(err) });
+      }
+      return;
+    }
 
     // ----- GET /state -----
     if (method === 'GET' && url.pathname === '/state') {
@@ -668,7 +1265,7 @@ const server = http.createServer(async (req, res) => {
       if (!requireAuth(req, res)) return;
 
       const raw = await readBody(req);
-      let body: { action?: string; targetId?: number; buttonIndex?: number };
+      let body: { action?: string; targetId?: number; buttonIndex?: number; searchTerm?: string };
       try {
         body = JSON.parse(raw);
       } catch {
@@ -676,9 +1273,22 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // Handle openSettings action
+      if (body.action === 'openSettings') {
+        try {
+          const searchTerm = body.searchTerm || '';
+          const result = await manager.openSettings(searchTerm);
+          sendJson(res, result.ok ? 200 : 422, result);
+          return;
+        } catch (err) {
+          sendJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
+          return;
+        }
+      }
+
       const validActions = ['approve', 'reject', 'run', 'skip'];
       if (!body.action || !validActions.includes(body.action)) {
-        sendJson(res, 400, { error: `Invalid action. Must be one of: ${validActions.join(', ')}` });
+        sendJson(res, 400, { error: `Invalid action. Must be one of: ${validActions.join(', ')}, openSettings` });
         return;
       }
 
@@ -966,7 +1576,7 @@ const server = http.createServer(async (req, res) => {
     // ----- 404 -----
     sendJson(res, 404, {
       error: 'Not found',
-      endpoints: ['GET /', 'POST /login', 'GET /health', 'GET /state', 'GET /terminal', 'POST /terminal/input', 'POST /terminal/kill', 'POST /terminal/new', 'POST /terminal/select', 'GET /terminal/presets', 'GET /chats', 'POST /chat/select', 'POST /chat/new', 'POST /send', 'POST /stop', 'POST /mode', 'GET /models', 'POST /model', 'POST /action', 'POST /revert', 'POST /revert/confirm', 'POST /message/edit', 'POST /message/edit/confirm', 'POST /message/edit/apply-text', 'POST /message/edit/poll-dialog', 'POST /image', 'GET /projects', 'POST /project/select', 'WS /ws'],
+      endpoints: ['GET /', 'POST /login', 'GET /health', 'GET /commands', 'GET /vapid-public-key', 'POST /push-subscribe', 'GET /mcp-servers', 'GET /mcp-servers/ui-state', 'POST /mcp-servers/toggle', 'GET /state', 'GET /terminal', 'POST /terminal/input', 'POST /terminal/kill', 'POST /terminal/new', 'POST /terminal/select', 'GET /terminal/presets', 'GET /chats', 'POST /chat/select', 'POST /chat/new', 'POST /send', 'POST /stop', 'POST /mode', 'GET /models', 'POST /model', 'POST /action', 'POST /revert', 'POST /revert/confirm', 'POST /message/edit', 'POST /message/edit/confirm', 'POST /message/edit/apply-text', 'POST /message/edit/poll-dialog', 'POST /image', 'GET /projects', 'POST /project/select', 'WS /ws'],
     });
 
   } catch (err) {
@@ -974,7 +1584,23 @@ const server = http.createServer(async (req, res) => {
     log(`Error handling ${method} ${url.pathname}: ${msg}`);
     sendJson(res, 500, { error: msg });
   }
-});
+};
+
+// Create HTTP or HTTPS server
+let server: http.Server | https.Server;
+if (USE_HTTPS) {
+  try {
+    const { key, cert } = getOrCreateSelfSignedCert();
+    server = https.createServer({ key, cert }, requestHandler);
+    log('HTTPS mode enabled');
+  } catch (err) {
+    console.error('\n\x1b[31mHTTPS setup failed. Falling back to HTTP.\x1b[0m');
+    console.error('\x1b[33m⚠️  WARNING: Microphone will NOT work without HTTPS in PWA!\x1b[0m\n');
+    server = http.createServer(requestHandler);
+  }
+} else {
+  server = http.createServer(requestHandler);
+}
 
 // ---------------------------------------------------------------------------
 // WebSocket upgrade
@@ -1068,10 +1694,40 @@ async function start(): Promise<void> {
   }
 
   server.listen(PORT, BIND_ADDR, () => {
-    log(`\x1b[32mRelay listening on ${BIND_ADDR}:${PORT}\x1b[0m`);
+    const protocol = USE_HTTPS ? 'https' : 'http';
+    log(`\x1b[32mRelay listening on ${BIND_ADDR}:${PORT} (${protocol.toUpperCase()})\x1b[0m`);
     if (!LAUNCHED_BY_START) {
       console.log('');
-      console.log(`  Web UI:  http://localhost:${PORT}`);
+      console.log(`  Web UI:  ${protocol}://localhost:${PORT}`);
+      if (USE_HTTPS) {
+        console.log('');
+        console.log('\x1b[33m  ⚠️  Using self-signed certificate - accept security warning in browser\x1b[0m');
+        
+        // Show local network IPs for mobile access
+        const interfaces = os.networkInterfaces();
+        const localIPs: string[] = [];
+        for (const name of Object.keys(interfaces)) {
+          const netInterface = interfaces[name];
+          if (netInterface) {
+            for (const iface of netInterface) {
+              if (iface.family === 'IPv4' && !iface.internal) {
+                localIPs.push(iface.address);
+              }
+            }
+          }
+        }
+        
+        if (localIPs.length > 0) {
+          console.log('\x1b[36m  📱 Mobile PWA access:\x1b[0m');
+          localIPs.forEach((ip) => {
+            console.log(`     ${protocol}://${ip}:${PORT}`);
+          });
+        }
+      } else {
+        console.log('');
+        console.log('\x1b[33m  ⚠️  WARNING: Microphone requires HTTPS for PWA\x1b[0m');
+        console.log('\x1b[33m     Set USE_HTTPS=true in .env to enable voice input\x1b[0m');
+      }
       console.log('');
       log('Waiting for requests...');
     }
