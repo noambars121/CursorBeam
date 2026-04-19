@@ -4481,7 +4481,7 @@ function doEditMessageInCursor(flatIndex) {
       if (j.status === 'opened') {
         enterPhoneCursorEditMode();
         showToast(
-          '\u05de\u05e6\u05d1 \u05e2\u05e8\u05d9\u05db\u05d4: \u05d4\u05d8\u05e7\u05e1\u05d8 \u05d4\u05d5\u05e2\u05ea\u05e7 \u05de\u05d4\u05d4\u05d5\u05d3\u05e2\u05d4 \u2014 \u05e2\u05e8\u05db\u05d5 \u05d5\u05e9\u05dc\u05d7\u05d5. \u05d0\u05dd \u05de\u05d5\u05e4\u05d9\u05e2 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2, \u05d1\u05d7\u05e8\u05d5 \u05db\u05d0\u05df.',
+          'Edit mode: Text copied from message — edit and send. If dialog appears, choose here.',
           6200,
         );
         loadState(function () {
@@ -4511,14 +4511,14 @@ function doSend() {
   if (phoneCursorEditActive) {
     if (pendingImages.length > 0) {
       showToast(
-        '\u05d1\u05de\u05e6\u05d1 \u05e2\u05e8\u05d9\u05db\u05d4 \u05dc\u05d0 \u05e0\u05d9\u05ea\u05df \u05dc\u05e6\u05e8\u05e3 \u05ea\u05de\u05d5\u05e0\u05d5\u05ea. \u05d4\u05e1\u05d9\u05e8\u05d5 \u05d0\u05d5 \u05dc\u05d7\u05e6\u05d5 \u00ab\u05d1\u05d9\u05d8\u05d5\u05dc\u00bb.',
+        'Cannot attach images in edit mode. Remove them or click "Cancel".',
         4500,
       );
       return;
     }
     var applyPayload = $input.value;
     if (!applyPayload.trim()) {
-      showToast('\u05d4\u05e7\u05dc\u05d9\u05d3\u05d5 \u05d8\u05e7\u05e1\u05d8 \u05dc\u05e2\u05e8\u05d9\u05db\u05d4.', 2500);
+      showToast('Enter text to edit.', 2500);
       return;
     }
     isSending = true;
@@ -4549,7 +4549,7 @@ function doSend() {
         if (!j) return;
         if (!j.ok) {
           showToast(
-            '\u05e2\u05d3\u05db\u05d5\u05df \u05e2\u05e8\u05d9\u05db\u05d4 \u05e0\u05db\u05e9\u05dc: ' + (j.error || ''),
+            'Edit update failed: ' + (j.error || ''),
             5000,
           );
           return;
@@ -4559,7 +4559,7 @@ function doSend() {
           cursorDialogConfirmKind = 'edit';
           showRevertConfirmDialog(j.dialog);
           showToast(
-            '\u05e0\u05e4\u05ea\u05d7 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2 \u05d1\u05d7\u05d9\u05e8\u05d4 \u2014 \u05dc\u05d7\u05e6\u05d5 \u05db\u05de\u05d5 \u05d1-Cursor',
+            'Choice dialog opened — click as in Cursor',
             4500,
           );
           loadState();
@@ -4584,23 +4584,23 @@ function doSend() {
               cursorDialogConfirmKind = 'edit';
               showRevertConfirmDialog(p.dialog);
               showToast(
-                '\u05e0\u05d9\u05de\u05e6\u05d0 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2 \u05d1\u05d7\u05d9\u05e8\u05d4 \u2014 \u05dc\u05d7\u05e6\u05d5 \u05db\u05de\u05d5 \u05d1-Cursor',
+                'Choice dialog found — click as in Cursor',
                 4500,
               );
             } else {
               exitPhoneCursorEditMode(true);
-              showToast('\u05d4\u05d8\u05e7\u05e1\u05d8 \u05e2\u05d5\u05d3\u05db\u05df \u05d1-Cursor', 2800);
+              showToast('Text updated in Cursor', 2800);
             }
             loadState();
           })
           .catch(function (e) {
-            showToast('\u05d3\u05d9\u05d0\u05dc\u05d5\u05d2: ' + e.message, 4000);
+            showToast('Dialog: ' + e.message, 4000);
             exitPhoneCursorEditMode(true);
             loadState();
           });
       })
       .catch(function (e) {
-        showToast('\u05e9\u05d2\u05d9\u05d0\u05ea \u05e8\u05e9\u05ea: ' + e.message, 4000);
+        showToast('Network error: ' + e.message, 4000);
       })
       .finally(function () {
         isSending = false;
@@ -4771,7 +4771,7 @@ function syncPhoneEditChrome() {
   }
   if ($input) {
     $input.placeholder = phoneCursorEditActive
-      ? '\u05e2\u05e8\u05d9\u05db\u05d4 \u2014 \u05d4\u05e9\u05dc\u05d9\u05d7\u05d4 \u05de\u05e2\u05d3\u05db\u05e0\u05ea \u05d1-Cursor\u2026'
+      ? 'Editing — sending updates Cursor…'
       : PROMPT_INPUT_PLACEHOLDER_DEFAULT;
   }
 }
@@ -4782,7 +4782,7 @@ function exitPhoneCursorEditMode(silent) {
   phoneEditPostSubmitDialog = false;
   syncPhoneEditChrome();
   if (!silent) {
-    showToast('\u05d9\u05e6\u05d0\u05ea \u05de\u05de\u05e6\u05d1 \u05e2\u05e8\u05d9\u05db\u05d4 \u05de\u05d4\u05d8\u05dc\u05e4\u05d5\u05df', 2000);
+    showToast('Exited edit mode', 2000);
   }
 }
 
@@ -4933,19 +4933,19 @@ function doRevertConfirm(buttonText, kind) {
           phoneEditPostSubmitDialog = false;
           exitPhoneCursorEditMode(true);
           if (kind === 'cancel') {
-            showToast('\u05d1\u05d5\u05d8\u05dc', 2000);
+            showToast('Cancelled', 2000);
           } else {
-            showToast('\u05e0\u05d1\u05d7\u05e8: ' + (j.clicked || buttonText), 3500);
+            showToast('Selected: ' + (j.clicked || buttonText), 3500);
           }
         } else if (kind === 'cancel') {
           exitPhoneCursorEditMode(true);
-          showToast('\u05d1\u05d5\u05d8\u05dc', 2000);
+          showToast('Cancelled', 2000);
         } else {
           enterPhoneCursorEditMode();
           showToast(
-            '\u05e0\u05d1\u05d7\u05e8: ' +
+            'Selected: ' +
               (j.clicked || buttonText) +
-              ' \u2014 \u05db\u05ea\u05d1\u05d5 \u05d1\u05e9\u05d5\u05e8\u05d4 \u05dc\u05de\u05d8\u05d4 \u05d5\u05e9\u05dc\u05d7\u05d5.',
+              ' — Write in the line below and send.',
             4500,
           );
         }
@@ -4953,9 +4953,9 @@ function doRevertConfirm(buttonText, kind) {
         if (kind === 'destructive') {
           showToast('Revert confirmed: ' + j.clicked, 3000);
         } else if (kind === 'cancel') {
-          showToast('\u05d1\u05d5\u05d8\u05dc', 2000);
+          showToast('Cancelled', 2000);
         } else {
-          showToast('\u05e0\u05d1\u05d7\u05e8: ' + j.clicked, 2000);
+          showToast('Selected: ' + j.clicked, 2000);
         }
       }
       loadState();
@@ -5344,9 +5344,9 @@ function buildMsg(m) {
           var editBtn = document.createElement('button');
           editBtn.type = 'button';
           editBtn.className = 'edit-prompt-btn';
-          editBtn.textContent = '\u05e2\u05e8\u05d9\u05db\u05d4 \u05d1-Cursor';
+          editBtn.textContent = 'Edit in Cursor';
           editBtn.title =
-            '\u05e4\u05d5\u05ea\u05d7 \u05d1-Cursor \u05d0\u05ea \u05de\u05e6\u05d1 \u05d4\u05e2\u05e8\u05d9\u05db\u05d4 \u05e9\u05dc \u05d4\u05e4\u05e8\u05d5\u05de\u05e4\u05d8 — \u05d0\u05dd \u05de\u05d5\u05e4\u05d9\u05e2 \u05d3\u05d9\u05d0\u05dc\u05d5\u05d2, \u05d1\u05d7\u05e8\u05d5 \u05db\u05d0\u05df \u05d0\u05ea \u05d4\u05d0\u05e4\u05e9\u05e8\u05d5\u05ea (\u05dc\u05de\u05e9\u05dc \u05d4\u05de\u05e9\u05da \u05de\u05db\u05d0\u05df \u05d0\u05d5 \u05d7\u05d6\u05e8\u05d4 \u05dc\u05e0\u05e7\u05d5\u05d3\u05d4 \u05d6\u05d5).';
+            'Opens edit mode for this prompt in Cursor — if dialog appears, choose option here (e.g., continue from here or revert to this point).';
           var fi = m.flatIndex;
           editBtn.onclick = function (e) {
             e.stopPropagation();
@@ -5411,7 +5411,7 @@ function buildMsg(m) {
       } else {
         inner.className += ' thought-inner-empty';
         inner.textContent =
-          '\u05dc\u05d0 \u05e0\u05de\u05e9\u05da \u05db\u05d0\u05df \u05d8\u05e7\u05e1\u05d8 \u05d4\u05de\u05d7\u05e9\u05d1\u05d4 \u05de-Cursor (\u05dc\u05e8\u05d5\u05d1 \u05db\u05e9\u05d4\u05d1\u05dc\u05d5\u05e7 \u05de\u05e7\u05d5\u05e4\u05dc). \u05e4\u05ea\u05d7 \u05d0\u05ea Thinking \u05d1\u05d3\u05e1\u05e7\u05d8\u05d5\u05e4 \u05db\u05d3\u05d9 \u05dc\u05e8\u05d0\u05d5\u05ea \u05d0\u05ea \u05d4\u05de\u05dc\u05d0.';
+          'Thinking text not synced from Cursor (usually when block is collapsed). Open Thinking in desktop to see full content.';
       }
       detEl.appendChild(inner);
       div.appendChild(detEl);
@@ -5499,7 +5499,7 @@ function doRestartRelay() {
     relayRestartPollTimer = null;
   }
   showToast(
-    '\u05de\u05e4\u05e2\u05d9\u05dc \u05de\u05d7\u05d3\u05e9 \u05d0\u05ea \u05d4-relay...',
+    'Restarting the relay...',
     3200,
   );
 
@@ -5514,7 +5514,7 @@ function doRestartRelay() {
             relayRestartPollTimer = null;
           }
           showToast(
-            'Relay \u05d7\u05d6\u05e8 \u2014 \u05de\u05d7\u05d1\u05e8 \u05de\u05d7\u05d3\u05e9',
+            'Relay restarted — reconnecting',
             2800,
           );
           try {
@@ -5528,7 +5528,7 @@ function doRestartRelay() {
             relayRestartPollTimer = null;
           }
           showToast(
-            '\u05d4-relay \u05e2\u05d3\u05d9\u05d9\u05df \u05dc\u05d0 \u05de\u05d2\u05d9\u05d1 \u2014 \u05d1\u05d3\u05d5\u05e7 \u05d9\u05d3\u05e0\u05d9\u05ea \u05d0\u05d5 \u05d4\u05e4\u05e2\u05dc supervisor / relay',
+            'Relay still not responding — check manually or start supervisor / relay',
             5000,
           );
         }
@@ -5547,15 +5547,15 @@ function doRestartRelay() {
     .catch(function () {
       if (!TOKEN) {
         showToast(
-          'Supervisor \u05dc\u05d0 \u05d6\u05de\u05d9\u05df (\u05e4\u05d5\u05e8\u05d8 ' +
+          'Supervisor not available (port ' +
             SUPERVISOR_PORT +
-            '). \u05d4\u05ea\u05d7\u05d1\u05e8 \u05de\u05d7\u05d3\u05e9 \u05d0\u05d5 \u05d4\u05e4\u05e2\u05dc: npx tsx v2/supervisor.ts',
+            '). Reconnect or start: npx tsx v2/supervisor.ts',
           5500,
         );
         return;
       }
       showToast(
-        'Supervisor \u05dc\u05d0 \u05d6\u05de\u05d9\u05df \u2014 \u05de\u05e0\u05e1\u05d4 \u05e8\u05d9\u05e2\u05e0\u05d5\u05df \u05d3\u05e8\u05da \u05d4-relay...',
+        'Supervisor not available — trying refresh via relay...',
         2800,
       );
       fetch(BASE + '/admin/restart-relay', {
@@ -5571,9 +5571,9 @@ function doRestartRelay() {
         })
         .catch(function () {
           showToast(
-            '\u05e8\u05d9\u05e2\u05e0\u05d5\u05df \u05e0\u05db\u05e9\u05dc. Supervisor: npx tsx v2/supervisor.ts (\u05e4\u05d5\u05e8\u05d8 ' +
+            'Refresh failed. Supervisor: npx tsx v2/supervisor.ts (port ' +
               SUPERVISOR_PORT +
-              ') \u05d0\u05d5 \u05d4\u05e4\u05e2\u05dc \u05d9\u05d3\u05e0\u05d9\u05ea relay \u05d9\u05d3\u05e0\u05d9\u05ea.',
+              ') or start relay manually.',
             6000,
           );
         });
