@@ -530,7 +530,7 @@ export class CdpStateManager extends EventEmitter {
             return {
               ok: false,
               error: ${targetFI >= 0}
-                ? 'No editable field for that message — tap the message in Cursor to edit, or use עריכה ב-Cursor again.'
+                ? 'No editable field for that message — tap the message in Cursor to edit, or use "Edit in Cursor" again.'
                 : 'Could not find an edit composer. Open Cursor chat and start editing a message first.',
             };
           }
@@ -2300,7 +2300,7 @@ export class CdpStateManager extends EventEmitter {
     try {
       const before = await this.getTerminalSessionMetrics();
       if (before.xterm < 1) {
-        return { ok: false, error: 'אין טרמינל פתוח לסגירה במחשב' };
+        return { ok: false, error: 'No terminal open to close on the computer' };
       }
 
       await this.client!.evaluate(CdpStateManager.TERMINAL_FOCUS_CLICK_JS);
@@ -2387,11 +2387,11 @@ export class CdpStateManager extends EventEmitter {
       return {
         ok: false,
         error:
-          'לא הצלחנו לסגור את הטרמינל.\n\n' +
-          'ב-Cursor: Ctrl+Shift+P\n' +
-          'חפשו: Kill Active Terminal\n\n' +
-          'או לחצו על סל המחיקה ליד הטאב של הטרמינל הפעיל.\n\n' +
-          'אם מופיע אישור מחיקה — כבו ב-Settings: terminal.integrated.confirmOnKill',
+          'Failed to close the terminal.\n\n' +
+          'In Cursor: Ctrl+Shift+P\n' +
+          'Search: Kill Active Terminal\n\n' +
+          'Or click the trash icon next to the active terminal tab.\n\n' +
+          'If a delete confirmation appears — disable in Settings: terminal.integrated.confirmOnKill',
       };
     } catch (err) {
       return {
@@ -2399,7 +2399,7 @@ export class CdpStateManager extends EventEmitter {
         error:
           err instanceof Error
             ? err.message
-            : 'לא ניתן לסגור טרמינל — נסו ידנית ב-Cursor',
+            : 'Cannot close terminal — try manually in Cursor',
       };
     } finally {
       this._uiOperationInProgress = false;
@@ -2417,7 +2417,7 @@ export class CdpStateManager extends EventEmitter {
       if (!panel.ok) {
         return {
           ok: false,
-          error: panel.error ?? 'לא ניתן לפתוח את פאנל הטרמינל ב-Cursor',
+          error: panel.error ?? 'Cannot open the terminal panel in Cursor',
         };
       }
 
@@ -2454,12 +2454,12 @@ export class CdpStateManager extends EventEmitter {
       return {
         ok: false,
         error:
-          'לא ניתן ליצור טרמינל חדש. ב-Cursor: Terminal -> New Terminal או כפתור + בפאנל.',
+          'Cannot create new terminal. In Cursor: Terminal -> New Terminal or + button in panel.',
       };
     } catch (err) {
       return {
         ok: false,
-        error: err instanceof Error ? err.message : 'שגיאה בפתיחת טרמינל',
+        error: err instanceof Error ? err.message : 'Error opening terminal',
       };
     } finally {
       this._uiOperationInProgress = false;
@@ -2532,7 +2532,7 @@ export class CdpStateManager extends EventEmitter {
       return {
         ok: false,
         error:
-          'לא נמצא טרמינל ב-Cursor. במחשב: פתח טרמינל (Terminal → New Terminal או Ctrl+Shift+`) וודא שחלון Cursor פעיל, ואז נסה שוב מהטלפון.',
+          'No terminal found in Cursor. On computer: Open terminal (Terminal → New Terminal or Ctrl+Shift+`) and ensure Cursor window is active, then try again from phone.',
       };
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -2575,7 +2575,7 @@ export class CdpStateManager extends EventEmitter {
         ...snap,
         extractedAt: Date.now(),
         error:
-          'הטרמינל עדיין לא מוכן. ודא שבמחשב יש חלון טרמינל פתוח בתוך Cursor (לא רק בעריכה).',
+          'Terminal not ready yet. Ensure a terminal window is open in Cursor on the computer (not just in editing).',
       };
     }
     return snap;
@@ -2811,6 +2811,370 @@ export class CdpStateManager extends EventEmitter {
     } finally {
       this._switchingChat = false;
       this._uiOperationInProgress = false;
+    }
+  }
+
+  /**
+   * Put `query` into the Cursor settings search box.
+   *
+   * Cursor's settings search is built on Monaco's input widget, which only
+   * filters the list in response to *real* keyboard events (CDP Input.insertText)
+   * — programmatic value sets + 'input' events don't trigger the filter.
+   * So: focus the search input via DOM (reliable, doesn't depend on what was
+   * focused before), clear it via DOM, then use CDP typeText. The typed text
+   * lands in the now-focused settings search instead of the chat textarea.
+   */
+  private async setSettingsSearchQuery(query: string): Promise<{ ok: boolean; error?: string }> {
+    if (!this.client?.connected) return { ok: false, error: 'not connected' };
+
+    let focused: { ok: boolean; error?: string; selector?: string; activeIsInput?: boolean } | null = null;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      focused = (await this.client.evaluate(`
+        (function() {
+          var selectors = [
+            '.settings-editor .suggest-input-container input',
+            '.settings-editor input.settings-search-input',
+            '.settings-editor [role="searchbox"]',
+            '.settings-editor input[aria-label*="Search"]',
+            '.settings-editor input[placeholder*="Search"]',
+            '.suggest-input-container input[aria-label*="Search settings"]',
+            'input.settings-search-input',
+            '[aria-label*="Search settings"]',
+            '.settings-editor input[type="text"]'
+          ];
+          var input = null, used = '';
+          for (var i = 0; i < selectors.length; i++) {
+            var el = document.querySelector(selectors[i]);
+            if (el) { input = el; used = selectors[i]; break; }
+          }
+          if (!input) return { ok: false, error: 'search input not found' };
+          // Clear any existing content via the native value setter so the
+          // filter list resets, then re-focus so the upcoming typeText lands
+          // in this element.
+          try {
+            var proto = window.HTMLInputElement && window.HTMLInputElement.prototype;
+            var desc = proto && Object.getOwnPropertyDescriptor(proto, 'value');
+            if (desc && desc.set) desc.set.call(input, '');
+            else input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          } catch (e) {}
+          input.focus();
+          if (typeof input.select === 'function') input.select();
+          return {
+            ok: document.activeElement === input,
+            selector: used,
+            activeIsInput: document.activeElement === input
+          };
+        })()
+      `)) as { ok: boolean; error?: string; selector?: string; activeIsInput?: boolean };
+      if (focused && focused.ok) break;
+      await this.sleep(80);
+    }
+
+    if (!focused || !focused.ok) {
+      return { ok: false, error: focused?.error || 'settings search input did not focus' };
+    }
+
+    this.log(`[MCP] Settings search focused via ${focused.selector}, typing "${query}"`);
+    // Now type via CDP — focus is on the settings search, so this triggers
+    // Cursor's actual filtering pipeline.
+    await this.client.typeText(query);
+    return { ok: true };
+  }
+
+  async toggleMcpServer(serverName: string, enabled: boolean): Promise<{ ok: boolean; error?: string }> {
+    this.ensureConnected();
+    this._uiOperationInProgress = true;
+
+    try {
+      // Step 1: Open Settings (Ctrl+,)
+      await this.client!.pressKeyRawChord(',', 'Comma', 188, 10);
+      await this.sleep(1200);
+
+      // Step 2: Don't search, just wait for settings to load
+      // The MCP servers should be visible in settings without search
+      await this.sleep(1000);
+
+      // Step 2.5: Debug - see what's in the page and find the toggle type
+      const debugInfo = await this.client!.evaluate(`
+        (function() {
+          var serverName = '${serverName}';
+          
+          // Find the firebase container
+          var container = document.querySelector('.mcp-server-item-container');
+          if (!container) {
+            // Try to find by text
+            var allDivs = document.querySelectorAll('div');
+            for (var i = 0; i < allDivs.length; i++) {
+              if (allDivs[i].textContent && allDivs[i].textContent.includes(serverName)) {
+                container = allDivs[i];
+                break;
+              }
+            }
+          }
+          
+          if (!container) {
+            return { error: 'Container not found' };
+          }
+          
+          // Find ALL interactive elements in or near this container
+          var parent = container.closest('.settings-row') || container.parentElement;
+          var allInteractive = parent ? parent.querySelectorAll('input, button, [role="switch"], [role="button"], [class*="toggle"], [class*="switch"]') : [];
+          
+          var interactiveInfo = Array.from(allInteractive).map(function(el) {
+            return {
+              tag: el.tagName,
+              type: el.getAttribute('type'),
+              role: el.getAttribute('role'),
+              classes: el.className,
+              checked: el.checked,
+              ariaChecked: el.getAttribute('aria-checked')
+            };
+          });
+          
+          return { 
+            found: !!container,
+            containerClasses: container.className,
+            interactiveCount: allInteractive.length,
+            interactive: interactiveInfo
+          };
+        })()
+      `) as any;
+      
+      if (debugInfo.error) {
+        this.log(`[MCP Debug] Error: ${debugInfo.error}`);
+      } else {
+        this.log(`[MCP Debug] Container found: ${debugInfo.found}, classes: ${debugInfo.containerClasses}`);
+        this.log(`[MCP Debug] Interactive elements: ${debugInfo.interactiveCount}`);
+        debugInfo.interactive.forEach((item: any, i: number) => {
+          this.log(`  ${i+1}. <${item.tag}> type=${item.type} role=${item.role} classes="${item.classes}" checked=${item.checked} aria-checked=${item.ariaChecked}`);
+        });
+      }
+
+      // Step 3: Find and click the toggle. We try multiple container/toggle
+      // selectors because Cursor's MCP settings markup has changed over
+      // versions — the original .mcp-server-item-container / .solid-switch-toggle
+      // pair is one possibility but newer builds use .settings-row / .monaco-toggle.
+      const clickResult = (await this.client!.evaluate(`
+        (function() {
+          var serverName = ${JSON.stringify(serverName)};
+          var targetEnabled = ${enabled};
+          var diag = { containerSelectorTried: [], toggleSelectorTried: [], matchedRow: null, allContainerCounts: {} };
+
+          var containerSelectors = [
+            '.mcp-server-item-container',
+            '.settings-row.mcp-server-row',
+            '.settings-row[data-mcp-server]',
+            '.settings-row',
+            '[class*="mcp-server"]'
+          ];
+
+          // Build a list of candidate rows containing the serverName text
+          var rows = [];
+          for (var s = 0; s < containerSelectors.length; s++) {
+            var sel = containerSelectors[s];
+            var nodes = document.querySelectorAll(sel);
+            diag.allContainerCounts[sel] = nodes.length;
+            diag.containerSelectorTried.push(sel + ':' + nodes.length);
+            for (var i = 0; i < nodes.length; i++) {
+              var t = (nodes[i].textContent || '').toLowerCase();
+              if (t.indexOf(serverName.toLowerCase()) !== -1) rows.push(nodes[i]);
+            }
+            if (rows.length) break;
+          }
+
+          if (!rows.length) {
+            return { ok: false, error: 'No row matched server name', diag: diag };
+          }
+
+          // Pick the smallest matching row (most specific)
+          rows.sort(function(a, b){ return (a.textContent||'').length - (b.textContent||'').length; });
+          var row = rows[0];
+          diag.matchedRow = (row.className || '') + ' :: ' + (row.textContent || '').slice(0, 80);
+
+          var toggleSelectors = [
+            '.solid-switch-toggle',
+            '.monaco-toggle',
+            '[role="switch"]',
+            'input[type="checkbox"]',
+            '.toggle-switch',
+            '[class*="switch"]',
+            '[class*="toggle"]'
+          ];
+
+          var toggle = null, usedToggleSel = '';
+          for (var k = 0; k < toggleSelectors.length; k++) {
+            var t = row.querySelector(toggleSelectors[k]);
+            diag.toggleSelectorTried.push(toggleSelectors[k] + (t ? ':found' : ':none'));
+            if (t) { toggle = t; usedToggleSel = toggleSelectors[k]; break; }
+          }
+
+          if (!toggle) return { ok: false, error: 'No toggle inside row', diag: diag };
+
+          // Determine current state: try aria-checked, .checked, class includes 'on'/'checked'
+          var ariaChecked = toggle.getAttribute && toggle.getAttribute('aria-checked');
+          var isCurrentlyOn;
+          if (ariaChecked === 'true' || ariaChecked === 'false') {
+            isCurrentlyOn = ariaChecked === 'true';
+          } else if (typeof toggle.checked === 'boolean' && toggle.tagName === 'INPUT') {
+            isCurrentlyOn = toggle.checked;
+          } else {
+            var cls = (toggle.className || '').toString();
+            isCurrentlyOn = /\\bon\\b|checked|active|enabled/i.test(cls);
+          }
+          diag.isCurrentlyOn = isCurrentlyOn;
+          diag.toggleSelector = usedToggleSel;
+          diag.toggleClass = toggle.className;
+
+          if (isCurrentlyOn === targetEnabled) {
+            return { ok: true, alreadySet: true, diag: diag };
+          }
+
+          // Click — try clicking the toggle directly, then fall back to a
+          // pointer event sequence (some Solid handlers only react to those).
+          try { toggle.click(); } catch(e) {}
+          try {
+            var rect = toggle.getBoundingClientRect();
+            var x = rect.left + rect.width/2, y = rect.top + rect.height/2;
+            ['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(type){
+              try {
+                toggle.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 }));
+              } catch(e){}
+            });
+          } catch(e){}
+
+          return { ok: true, clicked: true, diag: diag };
+        })()
+      `)) as { ok: boolean; error?: string; alreadySet?: boolean; clicked?: boolean; diag?: any };
+
+      this.log(`[MCP Toggle] Result: ${JSON.stringify(clickResult)}`);
+
+      // Close settings (Escape)
+      await this.sleep(500);
+      await this.client!.pressKey('Escape', 'Escape', 27);
+      await this.sleep(200);
+
+      this._uiOperationInProgress = false;
+      return clickResult;
+    } catch (err) {
+      this._uiOperationInProgress = false;
+      return {
+        ok: false,
+        error: `Failed to toggle MCP server: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+  }
+
+  async getMcpServersStateFromUI(): Promise<{ servers: Array<{ name: string; enabled: boolean }> }> {
+    this.ensureConnected();
+    this._uiOperationInProgress = true;
+
+    try {
+      // Open Settings
+      await this.client!.pressKeyRawChord(',', 'Comma', 188, 10);
+      await this.sleep(800);
+
+      // Don't search, just wait for settings to load
+      await this.sleep(1000);
+
+      // Read all MCP server states from DOM. Uses the same multi-selector
+      // strategy as toggleMcpServer so newer Cursor builds (which dropped
+      // .mcp-server-item-container in favor of .settings-row) still work.
+      const serversState = (await this.client!.evaluate(`
+        (function() {
+          var containerSelectors = [
+            '.mcp-server-item-container',
+            '.settings-row.mcp-server-row',
+            '.settings-row[data-mcp-server]',
+            '[class*="mcp-server"]'
+          ];
+          var nameSelectors = [
+            '.mcp-server-item-main-content-name',
+            '.settings-row-title',
+            '.mcp-server-name',
+            '[class*="server-name"]',
+            'h3', 'h4', '.title', '.name'
+          ];
+          var toggleSelectors = [
+            '.solid-switch-toggle',
+            '.monaco-toggle',
+            '[role="switch"]',
+            'input[type="checkbox"]'
+          ];
+
+          var containers = [];
+          var diag = {};
+          for (var s = 0; s < containerSelectors.length; s++) {
+            var nodes = document.querySelectorAll(containerSelectors[s]);
+            diag[containerSelectors[s]] = nodes.length;
+            for (var i = 0; i < nodes.length; i++) containers.push(nodes[i]);
+            if (containers.length) break;
+          }
+
+          var servers = [];
+          for (var c = 0; c < containers.length; c++) {
+            var container = containers[c];
+            var nameEl = null;
+            for (var n = 0; n < nameSelectors.length; n++) {
+              nameEl = container.querySelector(nameSelectors[n]);
+              if (nameEl) break;
+            }
+            var toggle = null;
+            for (var t = 0; t < toggleSelectors.length; t++) {
+              toggle = container.querySelector(toggleSelectors[t]);
+              if (toggle) break;
+            }
+            if (!nameEl || !toggle) continue;
+
+            var enabled;
+            var ariaChecked = toggle.getAttribute && toggle.getAttribute('aria-checked');
+            if (ariaChecked === 'true' || ariaChecked === 'false') enabled = ariaChecked === 'true';
+            else if (typeof toggle.checked === 'boolean' && toggle.tagName === 'INPUT') enabled = toggle.checked;
+            else enabled = /\\bon\\b|checked|active|enabled/i.test((toggle.className || '').toString());
+
+            servers.push({ name: (nameEl.textContent || '').trim(), enabled: enabled });
+          }
+          return { servers: servers, diag: diag };
+        })()
+      `)) as { servers: Array<{ name: string; enabled: boolean }>; diag?: any };
+      this.log(`[MCP UI State] containers found: ${JSON.stringify(serversState.diag || {})}, parsed ${serversState.servers.length} servers`);
+
+      // Close settings
+      await this.client!.pressKey('Escape', 'Escape', 27);
+      await this.sleep(200);
+
+      this._uiOperationInProgress = false;
+      return serversState;
+    } catch (err) {
+      this._uiOperationInProgress = false;
+      return { servers: [] };
+    }
+  }
+
+  async openSettings(searchTerm: string = ''): Promise<{ ok: boolean; error?: string }> {
+    this.ensureConnected();
+    this._uiOperationInProgress = true;
+
+    try {
+      // Open Settings with Ctrl+,
+      await this.client!.pressKeyRawChord(',', 'Comma', 188, 10);
+      await this.sleep(800);
+
+      // If search term provided, write it directly to the settings search input
+      // (avoids typing into whatever element happens to be focused — Bug #1).
+      if (searchTerm) {
+        await this.setSettingsSearchQuery(searchTerm);
+        await this.sleep(300);
+      }
+
+      this._uiOperationInProgress = false;
+      return { ok: true };
+    } catch (err) {
+      this._uiOperationInProgress = false;
+      return {
+        ok: false,
+        error: `Failed to open settings: ${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   }
 

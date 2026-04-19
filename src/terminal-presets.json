@@ -1,16 +1,16 @@
 [
-  { "id": "ls", "group": "מערכת", "label": "רשימת קבצים", "hint": "ls", "text": "ls", "enter": true },
-  { "id": "pwd", "group": "מערכת", "label": "תיקייה נוכחית", "hint": "pwd", "text": "pwd", "enter": true },
-  { "id": "clear", "group": "מערכת", "label": "ניקוי מסך", "hint": "clear", "text": "clear", "enter": true },
-  { "id": "ctrl-c", "group": "מערכת", "label": "עצור (Ctrl+C)", "hint": "^C", "text": "\u0003", "enter": false },
+  { "id": "ls", "group": "System", "label": "List files", "hint": "ls", "text": "ls", "enter": true },
+  { "id": "pwd", "group": "System", "label": "Current directory", "hint": "pwd", "text": "pwd", "enter": true },
+  { "id": "clear", "group": "System", "label": "Clear screen", "hint": "clear", "text": "clear", "enter": true },
+  { "id": "ctrl-c", "group": "System", "label": "Stop (Ctrl+C)", "hint": "^C", "text": "\u0003", "enter": false },
 
-  { "id": "status", "group": "Git", "label": "סטטוס", "hint": "git status", "text": "git status", "enter": true },
-  { "id": "diff", "group": "Git", "label": "הבדלים", "hint": "git diff", "text": "git diff", "enter": true },
-  { "id": "log", "group": "Git", "label": "היסטוריה (10)", "hint": "git log", "text": "git log --oneline -10", "enter": true },
-  { "id": "pull", "group": "Git", "label": "משיכה", "hint": "git pull", "text": "git pull", "enter": true },
+  { "id": "status", "group": "Git", "label": "Status", "hint": "git status", "text": "git status", "enter": true },
+  { "id": "diff", "group": "Git", "label": "Diff", "hint": "git diff", "text": "git diff", "enter": true },
+  { "id": "log", "group": "Git", "label": "History (10)", "hint": "git log", "text": "git log --oneline -10", "enter": true },
+  { "id": "pull", "group": "Git", "label": "Pull", "hint": "git pull", "text": "git pull", "enter": true },
 
-  { "id": "npm-install", "group": "npm", "label": "התקנה", "hint": "npm install", "text": "npm install", "enter": true },
-  { "id": "npm-test", "group": "npm", "label": "בדיקות", "hint": "npm test", "text": "npm test", "enter": true },
-  { "id": "npm-build", "group": "npm", "label": "בנייה", "hint": "npm run build", "text": "npm run build", "enter": true },
-  { "id": "npm-run", "group": "npm", "label": "הרצת סקריפט…", "hint": "npm run …", "text": "npm run ", "enter": false, "toInput": true }
+  { "id": "npm-install", "group": "npm", "label": "Install", "hint": "npm install", "text": "npm install", "enter": true },
+  { "id": "npm-test", "group": "npm", "label": "Test", "hint": "npm test", "text": "npm test", "enter": true },
+  { "id": "npm-build", "group": "npm", "label": "Build", "hint": "npm run build", "text": "npm run build", "enter": true },
+  { "id": "npm-run", "group": "npm", "label": "Run script…", "hint": "npm run …", "text": "npm run ", "enter": false, "toInput": true }
 ]

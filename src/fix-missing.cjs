@@ -53,7 +53,7 @@ content = content.replace(
 );
 
 // We need to also add edit capability. Cursor natively only allows editing human messages 
-// if it's the *last* one or via an Edit button that opens composer. But doing "שינוי להודעה" (edit message)
+// if it's the *last* one or via an Edit button that opens composer. But doing "edit message"
 // natively in relay requires implementing edit message in dom-extractor.ts and relay-server.ts.
 // The easiest UX is to allow copying the message text to the input box so the user can send it again,
 // but to actually *edit* a previous message, Cursor has an edit pencil. 
