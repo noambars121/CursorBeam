@@ -1892,6 +1892,30 @@ function showToast(msg, ms) {
   toastTimer = setTimeout(function() { $toast.classList.remove('show'); }, ms || 3000);
 }
 
+// ── Fetch with timeout helper ──
+function fetchWithTimeout(url, options, timeoutMs) {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, timeoutMs || 15000);
+  
+  var opts = options || {};
+  opts.signal = controller.signal;
+  
+  return fetch(url, opts).then(function(response) {
+    clearTimeout(timeoutId);
+    return response;
+  }).catch(function(error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      var err = new Error('Request timed out after ' + (timeoutMs || 15000) + 'ms');
+      err.name = 'TimeoutError';
+      throw err;
+    }
+    throw error;
+  });
+}
+
 
 // ── iOS PWA Scroll Lock ──
 document.addEventListener('touchmove', function(e) {
@@ -3488,21 +3512,35 @@ function doTermNew() {
   if ($termCtrlC) $termCtrlC.disabled = true;
   if ($termNew) $termNew.disabled = true;
   if ($termKill) $termKill.disabled = true;
+  
+  // Create abort controller for timeout
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, 15000); // 15 second timeout
+  
   fetch(BASE + '/terminal/new', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
     body: JSON.stringify({}),
+    signal: controller.signal
   }).then(function(r) {
+    clearTimeout(timeoutId);
     if (r.status === 401) { logout(); return null; }
     return r.json();
   }).then(function(j) {
     if (j && !j.ok) {
       showToast('New Terminal: ' + (j.error || 'failed'), 3500);
-    } else {
+    } else if (j) {
       showToast('New Terminal opened in Cursor', 2200);
     }
   }).catch(function(e) {
-    showToast('New Terminal: ' + e.message, 3500);
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showToast('New Terminal: Request timed out after 15s. Try again or open manually in Cursor.', 4000);
+    } else {
+      showToast('New Terminal: ' + e.message, 3500);
+    }
   }).finally(function() {
     termNewBusy = false;
     if ($termCtrlC) $termCtrlC.disabled = false;
@@ -3519,21 +3557,35 @@ function doTermKill() {
   if ($termCtrlC) $termCtrlC.disabled = true;
   if ($termNew) $termNew.disabled = true;
   if ($termKill) $termKill.disabled = true;
+  
+  // Create abort controller for timeout
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, 15000); // 15 second timeout
+  
   fetch(BASE + '/terminal/kill', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
     body: JSON.stringify({}),
+    signal: controller.signal
   }).then(function(r) {
+    clearTimeout(timeoutId);
     if (r.status === 401) { logout(); return null; }
     return r.json();
   }).then(function(j) {
     if (j && !j.ok) {
       showToast('Close terminal: ' + (j.error || 'failed'), 3500);
-    } else {
+    } else if (j) {
       showToast('Terminal closed in Cursor', 2200);
     }
   }).catch(function(e) {
-    showToast('Close terminal: ' + e.message, 3500);
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showToast('Close terminal: Request timed out after 15s. Try again or close manually in Cursor.', 4000);
+    } else {
+      showToast('Close terminal: ' + e.message, 3500);
+    }
   }).finally(function() {
     termKillBusy = false;
     if ($termCtrlC) $termCtrlC.disabled = false;
@@ -3549,17 +3601,31 @@ function sendTerminalInput(text, enter) {
   if ($termCtrlC) $termCtrlC.disabled = true;
   if ($termNew) $termNew.disabled = true;
   if ($termKill) $termKill.disabled = true;
+  
+  // Create abort controller for timeout
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, 10000); // 10 second timeout for input
+  
   fetch(BASE + '/terminal/input', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
     body: JSON.stringify({ text: text, enter: !!enter }),
+    signal: controller.signal
   }).then(function(r) {
+    clearTimeout(timeoutId);
     if (r.status === 401) { logout(); return null; }
     return r.json();
   }).then(function(j) {
     if (j && !j.ok) showToast('Terminal: ' + (j.error || 'failed'), 3000);
   }).catch(function(e) {
-    showToast('Terminal error: ' + e.message, 3000);
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showToast('Terminal: Request timed out after 10s. Check connection.', 3500);
+    } else {
+      showToast('Terminal error: ' + e.message, 3000);
+    }
   }).finally(function() {
     termSending = false;
     $termSend.disabled = false;
