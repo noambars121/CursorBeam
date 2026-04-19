@@ -1,7 +1,7 @@
 {
   "name": "cursorbeam",
-  "version": "1.0.0",
-  "description": "Remote control Cursor IDE from mobile devices - Secure PWA with WebSocket sync, terminal access, and Tailscale support for anywhere access",
+  "version": "1.1.0",
+  "description": "Remote control Cursor IDE from mobile devices - Secure PWA with voice input (Whisper AI), push notifications, WebSocket sync, terminal access, and Tailscale support for anywhere access",
   "main": "src/start.ts",
   "type": "module",
   "scripts": {

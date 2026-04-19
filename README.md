@@ -19,7 +19,7 @@
 [![PWA](https://img.shields.io/badge/PWA-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 [![Tailscale](https://img.shields.io/badge/Tailscale-242424?logo=tailscale&logoColor=white)](https://tailscale.com/)
 
-[**⬇️ Download Installer (Windows)**](https://github.com/noambars121/CursorBeam/releases/latest/download/CursorBeam-Setup-v1.0.0.exe)
+[**⬇️ Download Installer (Windows)**](https://github.com/noambars121/CursorBeam/releases/latest/download/CursorBeam-Setup-v1.1.0.exe)
 
 [Features](#features) •
 [Quick Start](#quick-start) •
