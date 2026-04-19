@@ -1797,7 +1797,7 @@ button:active:not(:disabled) {
         <textarea id="term-preset-edit-text" rows="3"></textarea>
       </div>
       <label class="term-presets-edit-check"><input type="checkbox" id="term-preset-edit-enter" checked> Send Enter after typing</label>
-      <label class="term-presets-edit-check"><input type="checkbox" id="term-preset-edit-toinput"> רק למלא בשדה (בלי שליחה)</label>
+      <label class="term-presets-edit-check"><input type="checkbox" id="term-preset-edit-toinput"> Only fill input (don't send)</label>
       <div class="revert-panel-footer" style="padding:16px 0 0; border-top:0.5px solid rgba(255,255,255,0.1); margin-top:8px;">
         <button type="button" class="revert-cancel" id="term-preset-edit-cancel">Cancel</button>
         <button type="button" class="revert-destroy" style="background:var(--accent);color:#000;" id="term-preset-edit-save">Save</button>
@@ -2276,13 +2276,13 @@ function loadFullChatHistory() {
         }
         lastMsgCount = currentMsgCount;
         if (iteration >= maxIterations) {
-          finishLoading('הגבלת steps (180)');
+          finishLoading('Steps limit reached (180)');
           return;
         }
         setTimeout(doOneLoad, 180);
       })
       .catch(function (err) {
-        finishLoading('שגיאה: ' + (err.message || 'unknown'));
+        finishLoading('Error: ' + (err.message || 'unknown'));
       });
   }
 
@@ -2997,7 +2997,7 @@ function renderProjectList() {
     var isFav = !!favSet[p.id];
     var star = isFav ? '\u2605' : '\u2606';
     var btnCls = isFav ? 'proj-fav-btn is-favorite' : 'proj-fav-btn';
-    var ariaFav = isFav ? 'הסר ממועדפים' : 'הוסף למועדפים (יוצג בראש הרשימה)';
+    var ariaFav = isFav ? 'Remove from favorites' : 'Add to favorites (shows at top of list)';
     html += '<li' + liCls + '>';
     html += '<div class="proj-item-inner">';
     html +=
@@ -3376,9 +3376,9 @@ function doSelectTerminalTab(index) {
     if (r.status === 401) { logout(); return null; }
     return r.json();
   }).then(function(j) {
-    if (j && !j.ok) showToast('מעבר טאב: ' + (j.error || 'נכשל'), 3000);
+    if (j && !j.ok) showToast('Switch tab: ' + (j.error || 'failed'), 3000);
   }).catch(function(e) {
-    showToast('מעבר טאב: ' + e.message, 3000);
+    showToast('Switch tab: ' + e.message, 3000);
   }).finally(function() {
     termTabSelecting = false;
     fetchTerminal();
@@ -3391,12 +3391,11 @@ function updateTerminal(data) {
     renderTerminalTabs(null);
     if (data && data.error) {
       var err = data.error;
-      var isHebrew = /[\u0590-\u05FF]/.test(err);
-      $termOutput.textContent = isHebrew ? err : ('אין גישה לטרמינל: ' + err);
+      $termOutput.textContent = 'No terminal access: ' + err;
     } else {
-      $termOutput.textContent = 'ממתין לטרמינל… אם אין טרמינל פתוח ב-Cursor במחשב, לחץ Terminal → New Terminal (או Ctrl+Shift+`) ונסה שוב.';
+      $termOutput.textContent = 'Waiting for terminal… If no terminal is open in Cursor, click Terminal → New Terminal (or Ctrl+Shift+`) and try again.';
     }
-    $termInfo.textContent = 'לא זמין';
+    $termInfo.textContent = 'Not available';
     return;
   }
   lastTerminalTabsSnapshot = Array.isArray(data.tabs) ? data.tabs : [];
@@ -3452,7 +3451,7 @@ function fetchTerminal() {
         if (data) done(data);
       })
       .catch(function() {
-        showToast('טרמינל: לא נטען — בדוק relay וחיבור לרשת', 4000);
+        showToast('Terminal: failed to load — check relay and network', 4000);
       });
   });
 }
@@ -3498,9 +3497,9 @@ function doTermNew() {
     return r.json();
   }).then(function(j) {
     if (j && !j.ok) {
-      showToast('New Terminal: ' + (j.error || 'נכשל'), 3500);
+      showToast('New Terminal: ' + (j.error || 'failed'), 3500);
     } else {
-      showToast('נפתח New Terminal ב-Cursor', 2200);
+      showToast('New Terminal opened in Cursor', 2200);
     }
   }).catch(function(e) {
     showToast('New Terminal: ' + e.message, 3500);
@@ -3515,7 +3514,7 @@ function doTermNew() {
 
 function doTermKill() {
   if (termKillBusy || termNewBusy || termSending) return;
-  if (!confirm('לClose את הטרמינל הפעיל ב-Cursor? הרצת פקודות תיפסק.')) return;
+  if (!confirm('Close the active terminal in Cursor? Running commands will stop.')) return;
   termKillBusy = true;
   if ($termCtrlC) $termCtrlC.disabled = true;
   if ($termNew) $termNew.disabled = true;
@@ -3529,12 +3528,12 @@ function doTermKill() {
     return r.json();
   }).then(function(j) {
     if (j && !j.ok) {
-      showToast('סגירת טרמינל: ' + (j.error || 'נכשל'), 3500);
+      showToast('Close terminal: ' + (j.error || 'failed'), 3500);
     } else {
-      showToast('הטרמינל נסגר ב-Cursor', 2200);
+      showToast('Terminal closed in Cursor', 2200);
     }
   }).catch(function(e) {
-    showToast('סגירת טרמינל: ' + e.message, 3500);
+    showToast('Close terminal: ' + e.message, 3500);
   }).finally(function() {
     termKillBusy = false;
     if ($termCtrlC) $termCtrlC.disabled = false;
@@ -3657,7 +3656,7 @@ function applyPreset(preset) {
     $termInput.style.height = 'auto';
     $termInput.style.height = Math.min($termInput.scrollHeight, 80) + 'px';
     $termInput.focus();
-    showToast('המשך בעריכה ולחץ Run', 1800);
+    showToast('Continue editing and click Run', 1800);
     return;
   }
   sendTerminalInput(preset.text, preset.enter !== false);
@@ -3669,9 +3668,9 @@ function renderPresets() {
     var empty = document.createElement('div');
     empty.style.cssText = 'color:var(--text-tertiary);font-size:13px;padding:8px 4px;text-align:center;';
     if (termPresetsServer.length) {
-      empty.textContent = 'אין פקודות ברשימה — ייתכן שהכול מוסתר. פתח "Edit & Add" לשחזור או הוסף חדשות.';
+      empty.textContent = 'No commands in list — some might be hidden. Open "Edit & Add" to restore or add new ones.';
     } else {
-      empty.textContent = 'אין פריסטים מהשרת — בדוק שקובץ terminal-presets.json קיים, או הוסף פקודות מ"Edit & Add".';
+      empty.textContent = 'No presets from server — check that terminal-presets.json exists, or add commands from "Edit & Add".';
     }
     $termPresets.appendChild(empty);
     return;
@@ -3680,7 +3679,7 @@ function renderPresets() {
   var order = [];
   var seen = {};
   for (var oi = 0; oi < termPresets.length; oi++) {
-    var g = termPresets[oi].group || 'כללי';
+    var g = termPresets[oi].group || 'General';
     if (!seen[g]) { seen[g] = true; order.push(g); }
   }
 
@@ -3699,7 +3698,7 @@ function renderPresets() {
 
     for (var pi = 0; pi < termPresets.length; pi++) {
       var p = termPresets[pi];
-      if ((p.group || 'כללי') !== groupName) continue;
+      if ((p.group || 'General') !== groupName) continue;
 
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -3731,7 +3730,7 @@ function showTermPresetsManageListPane() {
   var title = $('term-presets-manage-title');
   if (listPane) listPane.style.display = '';
   if (editPane) editPane.style.display = 'none';
-  if (title) title.textContent = 'ניהול פקודות';
+  if (title) title.textContent = 'Manage Commands';
 }
 
 function showTermPresetsEditPane() {
@@ -3740,7 +3739,7 @@ function showTermPresetsEditPane() {
   var title = $('term-presets-manage-title');
   if (listPane) listPane.style.display = 'none';
   if (editPane) editPane.style.display = '';
-  if (title) title.textContent = termPresetEditCtx && termPresetEditCtx.mode === 'new' ? 'פקודה חדשה' : 'עריכת פקודה';
+  if (title) title.textContent = termPresetEditCtx && termPresetEditCtx.mode === 'new' ? 'New Command' : 'Edit Command';
 }
 
 function getPresetBaseForEdit(id) {
@@ -3750,7 +3749,7 @@ function getPresetBaseForEdit(id) {
   }
   var s = getServerPresetById(id);
   if (s) return Object.assign({}, s, user.overrides[id] || {});
-  return { id: id, group: 'כללי', label: '', hint: '', text: '', enter: true, toInput: false };
+  return { id: id, group: 'General', label: '', hint: '', text: '', enter: true, toInput: false };
 }
 
 function renderTermPresetsManageList() {
@@ -3761,13 +3760,13 @@ function renderTermPresetsManageList() {
 
   var activeTitle = document.createElement('div');
   activeTitle.className = 'term-presets-manage-section-title';
-  activeTitle.textContent = 'מוצגות כעת';
+  activeTitle.textContent = 'Currently Shown';
   root.appendChild(activeTitle);
 
   if (!termPresets.length) {
     var empty = document.createElement('div');
     empty.style.cssText = 'color:var(--text-tertiary);font-size:14px;padding:8px 0;';
-    empty.textContent = 'אין פקודות פעילות.';
+    empty.textContent = 'No active commands.';
     root.appendChild(empty);
   } else {
     for (var ai = 0; ai < termPresets.length; ai++) {
@@ -3783,9 +3782,9 @@ function renderTermPresetsManageList() {
         var meta = document.createElement('div');
         meta.className = 'term-presets-manage-row-meta';
         var isCust = isUserCustomPresetId(id);
-        var src = isCust ? 'מותאם אישית' : 'ברירת מחדל';
-        if (user.overrides[id] && !isCust) src += ' · נערך';
-        meta.textContent = (preset.group || 'כללי') + ' · ' + src;
+        var src = isCust ? 'Custom' : 'Default';
+        if (user.overrides[id] && !isCust) src += ' · Edited';
+        meta.textContent = (preset.group || 'General') + ' · ' + src;
         main.appendChild(t);
         main.appendChild(meta);
         var actions = document.createElement('div');
@@ -3793,7 +3792,7 @@ function renderTermPresetsManageList() {
         var editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'term-presets-manage-edit';
-        editBtn.textContent = 'עריכה';
+        editBtn.textContent = 'Edit';
         editBtn.onclick = function() {
           termPresetEditCtx = { mode: 'edit', id: id, isCustom: isCust };
           var base = getPresetBaseForEdit(id);
@@ -3809,7 +3808,7 @@ function renderTermPresetsManageList() {
         var remBtn = document.createElement('button');
         remBtn.type = 'button';
         remBtn.className = 'term-presets-manage-remove';
-        remBtn.textContent = isCust ? 'מחק' : 'הסר מהרשימה';
+        remBtn.textContent = isCust ? 'Delete' : 'Remove from list';
         remBtn.onclick = function() {
           var st = loadUserPresetState();
           if (isCust) {
@@ -3821,7 +3820,7 @@ function renderTermPresetsManageList() {
           saveUserPresetState(st);
           rebuildMergedPresets();
           renderTermPresetsManageList();
-          showToast(isCust ? 'נמחק' : 'הוסר מהרשימה', 2000);
+          showToast(isCust ? 'Deleted' : 'Removed from list', 2000);
         };
         actions.appendChild(editBtn);
         actions.appendChild(remBtn);
@@ -3836,7 +3835,7 @@ function renderTermPresetsManageList() {
   if (hiddenIds.length) {
     var hidTitle = document.createElement('div');
     hidTitle.className = 'term-presets-manage-section-title';
-    hidTitle.textContent = 'מוסתרות (ברירת מחדל)';
+    hidTitle.textContent = 'Hidden (Defaults)';
     root.appendChild(hidTitle);
     for (var hi = 0; hi < hiddenIds.length; hi++) {
       (function(hid) {
@@ -3850,7 +3849,7 @@ function renderTermPresetsManageList() {
         t.textContent = sp ? (sp.label || hid) : hid;
         var meta = document.createElement('div');
         meta.className = 'term-presets-manage-row-meta';
-        meta.textContent = sp ? (sp.group || 'כללי') + ' · מוסתר' : 'מוסתר';
+        meta.textContent = sp ? (sp.group || 'General') + ' · Hidden' : 'Hidden';
         main.appendChild(t);
         main.appendChild(meta);
         var actions = document.createElement('div');
@@ -3858,14 +3857,14 @@ function renderTermPresetsManageList() {
         var restBtn = document.createElement('button');
         restBtn.type = 'button';
         restBtn.className = 'term-presets-manage-restore';
-        restBtn.textContent = 'שחזר';
+        restBtn.textContent = 'Restore';
         restBtn.onclick = function() {
           var st = loadUserPresetState();
           st.hidden = st.hidden.filter(function(x) { return x !== hid; });
           saveUserPresetState(st);
           rebuildMergedPresets();
           renderTermPresetsManageList();
-          showToast('שוחזר', 1800);
+          showToast('Restored', 1800);
         };
         actions.appendChild(restBtn);
         row.appendChild(main);
@@ -3894,17 +3893,17 @@ function saveTermPresetFromForm() {
   var ctx = termPresetEditCtx;
   if (!ctx) return;
   var label = ($('term-preset-edit-label').value || '').trim();
-  var group = ($('term-preset-edit-group').value || '').trim() || 'כללי';
+  var group = ($('term-preset-edit-group').value || '').trim() || 'General';
   var hint = ($('term-preset-edit-hint').value || '').trim();
   var text = $('term-preset-edit-text').value;
   var toInput = $('term-preset-edit-toinput').checked;
   var enter = $('term-preset-edit-enter').checked;
   if (!label) {
-    showToast('חסרה Label', 2500);
+    showToast('Missing label', 2500);
     return;
   }
   if (!String(text).trim() && !toInput) {
-    showToast('חסר טקסט פקודה', 2500);
+    showToast('Missing command text', 2500);
     return;
   }
   if (toInput) enter = false;
@@ -3922,7 +3921,7 @@ function saveTermPresetFromForm() {
     if (hint) np.hint = hint;
     st.custom.push(np);
     saveUserPresetState(st);
-    showToast('נשמר', 2000);
+    showToast('Saved', 2000);
   } else {
     var id = ctx.id;
     var full = {
@@ -3940,7 +3939,7 @@ function saveTermPresetFromForm() {
       st.overrides[id] = full;
     }
     saveUserPresetState(st);
-    showToast('נשמר', 2000);
+    showToast('Saved', 2000);
   }
   rebuildMergedPresets();
   termPresetEditCtx = null;
@@ -3960,7 +3959,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (addBtn) {
     addBtn.addEventListener('click', function() {
       termPresetEditCtx = { mode: 'new' };
-      $('term-preset-edit-id').value = '(חדש)';
+      $('term-preset-edit-id').value = '(new)';
       $('term-preset-edit-label').value = '';
       $('term-preset-edit-group').value = '';
       $('term-preset-edit-hint').value = '';
@@ -3973,11 +3972,11 @@ document.addEventListener('DOMContentLoaded', function() {
   var resetBtn = $('term-presets-reset-all-btn');
   if (resetBtn) {
     resetBtn.addEventListener('click', function() {
-      if (!confirm('לאפס את כל ההתאמות המקומיות (מוסתרות, עריכות ופקודות אישיות)?')) return;
+      if (!confirm('Reset all local customizations (hidden, edited, and custom commands)?')) return;
       try { localStorage.removeItem(TERM_PRESETS_USER_KEY); } catch (e) {}
       rebuildMergedPresets();
       renderTermPresetsManageList();
-      showToast('הותאמות אופסו', 2500);
+      showToast('Customizations reset', 2500);
     });
   }
   var cancelEdit = $('term-preset-edit-cancel');
@@ -4493,15 +4492,15 @@ function doEditMessageInCursor(flatIndex) {
       if (j.status === 'needs_confirmation' && j.dialog) {
         cursorDialogConfirmKind = 'edit';
         showRevertConfirmDialog(j.dialog);
-        showToast('לחצו על הבחירה הרצויה — הפעולה תתבצע ב-Cursor', 4200);
+        showToast('Click the desired choice — action will execute in Cursor', 4200);
         return;
       }
       phoneEditTargetFlatIndex = -1;
-      showToast('עריכה ב-Cursor: ' + (j.error || 'לא הצליח'), 4500);
+      showToast('Edit in Cursor: ' + (j.error || 'failed'), 4500);
     })
     .catch(function (e) {
       phoneEditTargetFlatIndex = -1;
-      showToast('שגיאת עריכה: ' + e.message, 4000);
+      showToast('Edit error: ' + e.message, 4000);
     });
 }
 
@@ -5171,13 +5170,13 @@ function buildCursorToolCard(m) {
     if (lines.length > maxLines) {
       var more = document.createElement('div');
       more.className = 'tool-code-meta';
-      more.textContent = '… +' + (lines.length - maxLines) + ' שורות (נחתך)';
+      more.textContent = '… +' + (lines.length - maxLines) + ' lines (truncated)';
       body.appendChild(more);
     }
   } else {
     var empty = document.createElement('div');
     empty.className = 'tool-code-meta';
-    empty.textContent = '(אין תוכן לShowה)';
+    empty.textContent = '(no content to display)';
     body.appendChild(empty);
   }
 
@@ -5187,7 +5186,7 @@ function buildCursorToolCard(m) {
   if (m.hasPendingApproval) {
     var pend = document.createElement('div');
     pend.className = 'tool-cursor-pending';
-    pend.textContent = 'ממתין לאישור ב-Cursor';
+    pend.textContent = 'Waiting for approval in Cursor';
     card.appendChild(pend);
   }
 
@@ -5360,8 +5359,8 @@ function buildMsg(m) {
         if (m.canRevert === true && fiOk) {
           var rbtn = document.createElement('button');
           rbtn.className = 'revert-btn';
-          rbtn.textContent = 'שחזור checkpoint';
-          rbtn.title = 'Restore Checkpoint ב-Cursor — מוחק הודעות אחרי נקודה זו';
+          rbtn.textContent = 'Restore Checkpoint';
+          rbtn.title = 'Restore Checkpoint in Cursor — deletes messages after this point';
           var locator = (m.revertTarget && m.revertTarget.locatorKind) || '';
           var previewText = textSnap.substring(0, 180);
           rbtn.onclick = function (e) {
@@ -5829,9 +5828,9 @@ var currentVoiceModel = 'base'; // default to base (small is too heavy for mobil
 
 var langNames = {
   'auto': 'Auto',
-  'he': 'עברית',
+  'he': 'Hebrew',
   'en': 'English',
-  'ar': 'العربية',
+  'ar': 'Arabic',
   'es': 'Español',
   'fr': 'Français',
   'de': 'Deutsch',
