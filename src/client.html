@@ -3327,7 +3327,6 @@ var $termSend = $('term-send');
 var $termCtrlC = $('term-ctrl-c');
 var $termNew = $('term-new');
 var $termKill = $('term-kill');
-var termKillBusy = false;
 var termNewBusy = false;
 var termTabSelecting = false;
 var lastTerminalTabsSnapshot = null;
@@ -3387,7 +3386,7 @@ function renderTerminalTabs(tabs) {
 }
 
 function doSelectTerminalTab(index) {
-  if (termTabSelecting || termSending || termKillBusy || termNewBusy) return;
+  if (termTabSelecting || termSending || termNewBusy) return;
   termTabSelecting = true;
   if (lastTerminalTabsSnapshot && lastTerminalTabsSnapshot.length) {
     renderTerminalTabs(lastTerminalTabsSnapshot);
@@ -3507,7 +3506,7 @@ function doTermCtrlC() {
 }
 
 function doTermNew() {
-  if (termNewBusy || termKillBusy || termSending) return;
+  if (termNewBusy || termSending) return;
   termNewBusy = true;
   if ($termCtrlC) $termCtrlC.disabled = true;
   if ($termNew) $termNew.disabled = true;
@@ -3545,54 +3544,25 @@ function doTermNew() {
     termNewBusy = false;
     if ($termCtrlC) $termCtrlC.disabled = false;
     if ($termNew) $termNew.disabled = false;
-    if ($termKill && !termKillBusy) $termKill.disabled = false;
+    if ($termKill) $termKill.disabled = false;
     fetchTerminal();
   });
 }
 
 function doTermKill() {
-  if (termKillBusy || termNewBusy || termSending) return;
-  if (!confirm('Close the active terminal in Cursor? Running commands will stop.')) return;
-  termKillBusy = true;
-  if ($termCtrlC) $termCtrlC.disabled = true;
-  if ($termNew) $termNew.disabled = true;
-  if ($termKill) $termKill.disabled = true;
+  if (termSending) return;
+  if (!confirm('Close the active terminal? This will send "exit" command.')) return;
   
-  // Create abort controller for timeout
-  var controller = new AbortController();
-  var timeoutId = setTimeout(function() {
-    controller.abort();
-  }, 15000); // 15 second timeout
+  // Simply send "exit" command to terminal
+  sendTerminalInput('exit', true);
   
-  fetch(BASE + '/terminal/kill', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
-    body: JSON.stringify({}),
-    signal: controller.signal
-  }).then(function(r) {
-    clearTimeout(timeoutId);
-    if (r.status === 401) { logout(); return null; }
-    return r.json();
-  }).then(function(j) {
-    if (j && !j.ok) {
-      showToast('Close terminal: ' + (j.error || 'failed'), 3500);
-    } else if (j) {
-      showToast('Terminal closed in Cursor', 2200);
-    }
-  }).catch(function(e) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') {
-      showToast('Close terminal: Request timed out after 15s. Try again or close manually in Cursor.', 4000);
-    } else {
-      showToast('Close terminal: ' + e.message, 3500);
-    }
-  }).finally(function() {
-    termKillBusy = false;
-    if ($termCtrlC) $termCtrlC.disabled = false;
-    if ($termNew && !termNewBusy) $termNew.disabled = false;
-    if ($termKill) $termKill.disabled = false;
+  // Show feedback
+  showToast('Closing terminal...', 2000);
+  
+  // Refresh terminal status after a moment
+  setTimeout(function() {
     fetchTerminal();
-  });
+  }, 1500);
 }
 
 function sendTerminalInput(text, enter) {
@@ -3631,7 +3601,7 @@ function sendTerminalInput(text, enter) {
     $termSend.disabled = false;
     if ($termCtrlC) $termCtrlC.disabled = false;
     if ($termNew && !termNewBusy) $termNew.disabled = false;
-    if ($termKill && !termKillBusy) $termKill.disabled = false;
+    if ($termKill) $termKill.disabled = false;
     $termInput.focus();
   });
 }
