@@ -1878,22 +1878,55 @@ export class CdpStateManager extends EventEmitter {
   private static TERMINAL_EXTRACT_JS = `
     (function() {
       function getTerminalTabs() {
-        var panel = document.querySelector('.part.panel.bottom') || document.querySelector('.part.panel');
         var tabs = [];
         var nodes = null;
         
-        if (panel) {
-          // Try multiple selectors
+        // First try to find terminal-specific containers
+        var terminalContainer = document.querySelector('.terminal-tabs-container') ||
+                                document.querySelector('.terminal .tabs-container') ||
+                                document.querySelector('[id*="terminal"] .tabs-container') ||
+                                document.querySelector('.terminal-outer-container .tabs-container');
+        
+        if (terminalContainer) {
+          nodes = terminalContainer.querySelectorAll('.tab');
+        }
+        
+        // If not found, try panel but filter for terminal tabs only
+        if (!nodes || !nodes.length) {
+          var panel = document.querySelector('.part.panel.bottom') || document.querySelector('.part.panel');
+          if (panel) {
+            var allTabs = panel.querySelectorAll('.tabs-container .tab');
+            var filteredTabs = [];
+            for (var t = 0; t < allTabs.length; t++) {
+              var tab = allTabs[t];
+              var text = (tab.textContent || '').toLowerCase();
+              var ariaLabel = (tab.getAttribute('aria-label') || '').toLowerCase();
+              var title = (tab.getAttribute('title') || '').toLowerCase();
+              
+              // Only include if it looks like a terminal tab
+              if (text.includes('terminal') || text.includes('bash') || text.includes('powershell') || text.includes('cmd') ||
+                  ariaLabel.includes('terminal') || title.includes('terminal') ||
+                  text.match(/^\d+:/)) {  // Often terminals are named like "1: bash"
+                filteredTabs.push(tab);
+              }
+            }
+            if (filteredTabs.length) {
+              nodes = filteredTabs;
+            }
+          }
+        }
+        
+        // Try alternative selectors
+        if (!nodes || !nodes.length) {
           var selectors = [
-            '.tabs-container .tab',
             '.terminal-tab',
             '.terminal-tabs-entry',
-            '.tabs-list .tab',
-            '[role="tab"]'
+            '.terminal-list .tab',
+            '[id*="terminal-tab"]'
           ];
           
           for (var s = 0; s < selectors.length && (!nodes || !nodes.length); s++) {
-            nodes = panel.querySelectorAll(selectors[s]);
+            nodes = document.querySelectorAll(selectors[s]);
           }
         }
         

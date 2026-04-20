@@ -320,7 +320,8 @@ async function main(): Promise<void> {
   // ── Access URLs ──
   section('Access URLs');
 
-  console.log(`  ${C.green}${C.bold}Local${C.reset}       http://localhost:${RELAY_PORT}`);
+  const protocol = process.env.USE_HTTPS === 'true' ? 'https' : 'http';
+  console.log(`  ${C.green}${C.bold}Local${C.reset}       ${protocol}://localhost:${RELAY_PORT}`);
 
   if (bind.mode === 'localhost') {
     info('Localhost only — set V2_LAN=1 to expose on LAN/Tailscale');
@@ -328,25 +329,31 @@ async function main(): Promise<void> {
       console.log('');
       info('Available if you enable V2_LAN=1:');
       for (const ip of net.lanIps) {
-        info(`  LAN        http://${ip}:${RELAY_PORT}`);
+        info(`  LAN        ${protocol}://${ip}:${RELAY_PORT}`);
       }
       if (net.tailscaleIp) {
-        info(`  Tailscale  http://${net.tailscaleIp}:${RELAY_PORT}`);
+        info(`  Tailscale  ${protocol}://${net.tailscaleIp}:${RELAY_PORT}`);
       }
       if (net.tailscaleName) {
-        info(`  Tailscale  http://${net.tailscaleName}:${RELAY_PORT}`);
+        info(`  Tailscale  ${protocol}://${net.tailscaleName}:${RELAY_PORT}`);
       }
     }
   } else {
     for (const ip of net.lanIps) {
-      console.log(`  ${C.cyan}${C.bold}LAN${C.reset}         http://${ip}:${RELAY_PORT}`);
+      console.log(`  ${C.cyan}${C.bold}LAN${C.reset}         ${protocol}://${ip}:${RELAY_PORT}`);
     }
     if (net.tailscaleIp) {
-      console.log(`  ${C.magenta}${C.bold}Tailscale${C.reset}   http://${net.tailscaleIp}:${RELAY_PORT}`);
+      console.log(`  ${C.magenta}${C.bold}Tailscale${C.reset}   ${protocol}://${net.tailscaleIp}:${RELAY_PORT}`);
     }
     if (net.tailscaleName) {
-      console.log(`  ${C.magenta}${C.bold}Tailscale${C.reset}   http://${net.tailscaleName}:${RELAY_PORT}`);
+      console.log(`  ${C.magenta}${C.bold}Tailscale${C.reset}   ${protocol}://${net.tailscaleName}:${RELAY_PORT}`);
     }
+  }
+  
+  if (protocol === 'https') {
+    console.log('');
+    console.log(`  ${C.yellow}⚠️  Using self-signed certificate${C.reset}`);
+    console.log(`  ${C.gray}   Accept security warning in browser${C.reset}`);
   }
 
   // ── Auth ──

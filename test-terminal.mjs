@@ -74,7 +74,7 @@ async function test() {
         console.log('   Tabs:', termData.tabs?.length || 0);
         if (termData.tabs) {
           termData.tabs.forEach((tab, i) => {
-            console.log(`     [${i}] ${tab.name} ${tab.active ? '(active)' : ''}`);
+            console.log(`     [${i}] ${tab.title} ${tab.active ? '(active)' : ''}`);
           });
         }
         console.log('   Content length:', (termData.content || '').length);
