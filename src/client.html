@@ -4399,6 +4399,9 @@ function connectWs() {
     if (reconnectingShowTimer) { clearTimeout(reconnectingShowTimer); reconnectingShowTimer = null; }
     if (disconnectGraceTimer)  { clearTimeout(disconnectGraceTimer);  disconnectGraceTimer  = null; }
     updateStatus(serverActivityState);
+    
+    // Fetch terminal state when WebSocket connects
+    fetchTerminal();
   };
   ws.onclose = function() {
     // Only act on the connected → dropped edge. If we're already in a dropped
