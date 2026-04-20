@@ -3391,17 +3391,31 @@ function doSelectTerminalTab(index) {
   if (lastTerminalTabsSnapshot && lastTerminalTabsSnapshot.length) {
     renderTerminalTabs(lastTerminalTabsSnapshot);
   }
+  
+  // Create abort controller for timeout
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, 10000); // 10 second timeout
+  
   fetch(BASE + '/terminal/select', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
     body: JSON.stringify({ index: index }),
+    signal: controller.signal
   }).then(function(r) {
+    clearTimeout(timeoutId);
     if (r.status === 401) { logout(); return null; }
     return r.json();
   }).then(function(j) {
     if (j && !j.ok) showToast('Switch tab: ' + (j.error || 'failed'), 3000);
   }).catch(function(e) {
-    showToast('Switch tab: ' + e.message, 3000);
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showToast('Switch tab: Request timed out. Try again.', 3500);
+    } else {
+      showToast('Switch tab: ' + e.message, 3000);
+    }
   }).finally(function() {
     termTabSelecting = false;
     fetchTerminal();

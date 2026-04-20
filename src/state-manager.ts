@@ -2598,35 +2598,77 @@ export class CdpStateManager extends EventEmitter {
       const result = await this.client!.evaluate(
         `(function() {
           var idx = ${idx};
+          
+          function deepClick(el) {
+            if (!el) return false;
+            var r = el.getBoundingClientRect();
+            var c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+            try { el.focus(); } catch (e) {}
+            ['mousedown', 'mouseup', 'click'].forEach(function(type) {
+              try {
+                el.dispatchEvent(new MouseEvent(type, {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  clientX: c.x,
+                  clientY: c.y,
+                  button: 0,
+                  buttons: type === 'mousedown' ? 1 : 0
+                }));
+              } catch (e) {}
+            });
+            try { el.click(); } catch (e) {}
+            return true;
+          }
+          
           var panel = document.querySelector('.part.panel.bottom') || document.querySelector('.part.panel');
           var nodes = [];
+          
           if (panel) {
-            nodes = Array.prototype.slice.call(panel.querySelectorAll('.tabs-container .tab'));
-            if (!nodes.length) nodes = Array.prototype.slice.call(panel.querySelectorAll('.terminal-tab'));
-            if (!nodes.length) nodes = Array.prototype.slice.call(panel.querySelectorAll('.terminal-tabs-entry'));
-          }
-          if (idx >= 0 && idx < nodes.length) {
-            try {
-              nodes[idx].click();
-              return { ok: true };
-            } catch (e) {
-              return { ok: false, error: String(e) };
+            // Try multiple selectors
+            var selectors = [
+              '.tabs-container .tab',
+              '.terminal-tab',
+              '.terminal-tabs-entry',
+              '.tabs-list .tab',
+              '.monaco-workbench .terminal .tabs-container .tab',
+              '[role="tab"]'
+            ];
+            
+            for (var s = 0; s < selectors.length; s++) {
+              nodes = Array.prototype.slice.call(panel.querySelectorAll(selectors[s]));
+              if (nodes.length > 0) break;
             }
           }
+          
+          if (idx >= 0 && idx < nodes.length) {
+            try {
+              deepClick(nodes[idx]);
+              return { ok: true, found: nodes.length };
+            } catch (e) {
+              return { ok: false, error: String(e), found: nodes.length };
+            }
+          }
+          
           if (idx === 0) {
             var st = document.querySelector('.single-terminal-tab');
             if (st) {
               try {
-                st.click();
-                return { ok: true };
+                deepClick(st);
+                return { ok: true, found: 1 };
               } catch (e2) {}
             }
           }
-          return { ok: false, error: 'Tab not found' };
+          
+          return { ok: false, error: 'Tab ' + idx + ' not found. Total tabs: ' + nodes.length, found: nodes.length };
         })()`,
-      ) as { ok: boolean; error?: string };
+      ) as { ok: boolean; error?: string; found?: number };
+      
       if (result.ok) {
+        this.log(`Terminal: selected tab ${idx} successfully (${result.found || 0} tabs found)`);
         await this.sleep(220);
+      } else {
+        this.log(`Terminal: failed to select tab ${idx} - ${result.error}`);
       }
       return result;
     } catch (err) {
