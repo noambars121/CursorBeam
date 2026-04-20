@@ -1881,21 +1881,70 @@ export class CdpStateManager extends EventEmitter {
         var panel = document.querySelector('.part.panel.bottom') || document.querySelector('.part.panel');
         var tabs = [];
         var nodes = null;
+        
         if (panel) {
-          nodes = panel.querySelectorAll('.tabs-container .tab');
-          if (!nodes.length) nodes = panel.querySelectorAll('.terminal-tab');
-          if (!nodes.length) nodes = panel.querySelectorAll('.terminal-tabs-entry');
+          // Try multiple selectors
+          var selectors = [
+            '.tabs-container .tab',
+            '.terminal-tab',
+            '.terminal-tabs-entry',
+            '.tabs-list .tab',
+            '[role="tab"]'
+          ];
+          
+          for (var s = 0; s < selectors.length && (!nodes || !nodes.length); s++) {
+            nodes = panel.querySelectorAll(selectors[s]);
+          }
         }
+        
         if (nodes && nodes.length) {
           for (var i = 0; i < nodes.length; i++) {
             var el = nodes[i];
-            var labelEl = el.querySelector('.monaco-icon-label') || el.querySelector('.label-name') || el.querySelector('.tab-label');
-            var title = labelEl ? (labelEl.textContent || '') : (el.textContent || '');
-            title = String(title).replace(/\\s+/g, ' ').trim();
-            if (!title) title = 'Terminal ' + (i + 1);
-            tabs.push({ index: i, title: title, active: el.classList.contains('active') });
+            var title = '';
+            
+            // Try multiple ways to get the title
+            var labelSelectors = [
+              '.monaco-icon-label',
+              '.label-name',
+              '.tab-label',
+              '.label',
+              'span[class*="label"]',
+              '.codicon'
+            ];
+            
+            for (var ls = 0; ls < labelSelectors.length && !title; ls++) {
+              var labelEl = el.querySelector(labelSelectors[ls]);
+              if (labelEl && labelEl.textContent) {
+                title = String(labelEl.textContent).trim();
+              }
+            }
+            
+            // If no label found, try aria-label or title attribute
+            if (!title) {
+              title = el.getAttribute('aria-label') || el.getAttribute('title') || '';
+            }
+            
+            // If still no title, use element text content (but clean it)
+            if (!title && el.textContent) {
+              title = String(el.textContent).replace(/[×✕]/g, '').trim();
+            }
+            
+            // Clean up title
+            title = title.replace(/\\s+/g, ' ').replace(/^\s*\d+:\s*/, '').trim();
+            
+            // Fallback
+            if (!title || title.length < 1) {
+              title = 'Terminal ' + (i + 1);
+            }
+            
+            tabs.push({ 
+              index: i, 
+              title: title, 
+              active: el.classList.contains('active') || el.classList.contains('selected') || el.hasAttribute('aria-selected')
+            });
           }
         }
+        
         if (!tabs.length) {
           var st = document.querySelector('.single-terminal-tab');
           if (st) {
@@ -1903,6 +1952,7 @@ export class CdpStateManager extends EventEmitter {
             tabs.push({ index: 0, title: t, active: true });
           }
         }
+        
         return tabs;
       }
 
