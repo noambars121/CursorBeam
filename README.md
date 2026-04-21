@@ -131,14 +131,14 @@
 
 <div align="center">
 
-[![Download CursorBeam Installer](https://img.shields.io/badge/⬇️_Download-CursorBeam--Setup--v1.0.0.exe-success?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/noambars121/CursorBeam/releases/latest/download/CursorBeam-Setup-v1.0.0.exe)
+[![Download CursorBeam Installer](https://img.shields.io/badge/⬇️_Download-CursorBeam--Setup--v1.1.0.exe-success?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/noambars121/CursorBeam/releases/latest/download/CursorBeam-Setup-v1.1.0.exe)
 
 **One-click direct download** · 27 MB · Windows 10/11 (x64) · [All releases →](https://github.com/noambars121/CursorBeam/releases)
 
 </div>
 
 1. Click the button above to download the installer.
-2. Run `CursorBeam-Setup-v1.0.0.exe` — the wizard walks you through password, Cursor path, and projects folder.
+2. Run `CursorBeam-Setup-v1.1.0.exe` — the wizard walks you through password, Cursor path, and projects folder.
 3. Launch CursorBeam from the Start Menu or desktop shortcut. Done.
 
 **What's included:**
